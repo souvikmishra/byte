@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYTE</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="14" cy="14" r="12" stroke="#FF0000" stroke-width="2.5"/>
+        <line x1="6" y1="22" x2="22" y2="6" stroke="#FF0000" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <span class="wordmark">BYTE</span>
+    </div>
+    <span id="status-badge" class="badge active">ON</span>
+  </header>
+
+  <main>
+    <div class="row">
+      <div class="row-label">
+        <span class="label-title">Block Shorts</span>
+        <span class="label-sub">Hides shelves, cards &amp; sidebar entry</span>
+      </div>
+      <label class="toggle" for="toggle-enabled">
+        <input type="checkbox" id="toggle-enabled" />
+        <span class="track"><span class="thumb"></span></span>
+      </label>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+      <div class="row-label">
+        <span class="label-title">Videos per row</span>
+        <span class="label-sub">Homepage &amp; subscription grid</span>
+      </div>
+      <div class="stepper">
+        <button class="stepper-btn" id="grid-dec" aria-label="Fewer columns">−</button>
+        <span class="stepper-val" id="grid-count">3</span>
+        <button class="stepper-btn" id="grid-inc" aria-label="More columns">+</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+      <div class="row-label">
+        <span class="label-title">Hide thumbnails</span>
+        <span class="label-sub">Duration moves to the metadata row</span>
+      </div>
+      <label class="toggle" for="toggle-thumbs">
+        <input type="checkbox" id="toggle-thumbs" />
+        <span class="track"><span class="thumb"></span></span>
+      </label>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+      <div class="row-label">
+        <span class="label-title">Hide promo sections</span>
+        <span class="label-sub">Memberships, music, topics &amp; Premium</span>
+      </div>
+      <label class="toggle" for="toggle-promos">
+        <input type="checkbox" id="toggle-promos" />
+        <span class="track"><span class="thumb"></span></span>
+      </label>
+    </div>
+  </main>
+
+  <footer>
+    <div class="stat">
+      <span class="stat-value" id="session-count">—</span>
+      <span class="stat-label">this session</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <span class="stat-value" id="total-count">—</span>
+      <span class="stat-label">all time</span>
+    </div>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

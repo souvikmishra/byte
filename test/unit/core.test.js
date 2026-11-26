@@ -79,6 +79,16 @@ for (const [name, list] of [['SHORTS_SELECTORS', Core.SHORTS_SELECTORS], ['PROMO
   });
 }
 
+test('generic shelf containers are only hidden when they hold Shorts', () => {
+  // These tags also wrap regular videos; a bare entry would hide them too.
+  const generic = ['grid-shelf-view-model', 'ytd-rich-shelf-renderer', 'ytd-rich-section-renderer'];
+  for (const sel of Core.SHORTS_SELECTORS) {
+    const tag = sel.match(/^[a-z-]+/)?.[0];
+    if (generic.includes(tag)) assert.match(sel, /^[a-z-]+:has\(/, sel);
+  }
+  assert.ok(Core.SHORTS_SELECTORS.some(s => s.startsWith('grid-shelf-view-model:has(')));
+});
+
 test('promo selectors stay out of the Shorts list (they are not counted as blocked)', () => {
   for (const sel of Core.PROMO_SELECTORS) assert.ok(!Core.SHORTS_SELECTORS.includes(sel), sel);
 });

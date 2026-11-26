@@ -7,6 +7,10 @@ const Core = require('../../lib/core.js');
 // reliably contain Shorts shelves.
 const SEARCH_WITH_SHORTS = 'cat';
 
+function visibleCount(locator) {
+  return locator.evaluateAll(els => els.filter(el => el.checkVisibility()).length);
+}
+
 async function loadMoreResults(page) {
   const before = await page.locator(yt.SEL.searchResult).count();
   await expect.poll(async () => {
@@ -59,16 +63,26 @@ test.describe('Shorts hidden', () => {
     expect(ruleCounts).toEqual([1, 1]);
   });
 
-  test('known gap: emptied Shorts shelves on search still show their header', async ({ page }) => {
-    // YouTube's newer search shelves (grid-shelf-view-model) aren't in
-    // SHORTS_SELECTORS: the cards inside are hidden but the "Shorts" title and
-    // "Show more" strip stay. Marked expected-to-fail so the suite goes red
-    // (unexpected pass) once this is fixed or YouTube changes.
-    test.fail();
+  test('search: Shorts shelves are on the page but hidden, regular results around them are not', async ({ page }) => {
     await yt.gotoSearch(page, SEARCH_WITH_SHORTS);
-    const shelves = page.locator('grid-shelf-view-model:has(ytm-shorts-lockup-view-model-v2)');
+    const shelves = page.locator(yt.SEL.shortsShelf);
     await expect(shelves.first()).toBeAttached();
-    const visible = await shelves.evaluateAll(els => els.filter(el => el.checkVisibility()).length);
-    expect(visible).toBe(0);
+    expect(await visibleCount(shelves)).toBe(0);
+
+    // Guards against an over-broad selector (e.g. hiding the section that
+    // wraps the shelf): videos next to a hidden shelf must still show.
+    const regular = page.locator(yt.SEL.regularVideoResult);
+    await expect(regular.first()).toBeVisible();
+    const hiddenRegular = await regular.evaluateAll(els => els.filter(el => !el.checkVisibility()).length);
+    expect(hiddenRegular).toBe(0);
+    const besideShelves = await shelves.evaluateAll(els => new Set(els.flatMap(shelf =>
+      [...shelf.parentElement.children].filter(el => el.matches('ytd-video-renderer') && el.checkVisibility()))).size);
+    expect(besideShelves).toBeGreaterThan(0);
+  });
+
+  test('control: with Block Shorts off, the Shorts shelves on search are visible', async ({ page, extension }) => {
+    await extension.setStorage({ byte_enabled: false });
+    await yt.gotoSearch(page, SEARCH_WITH_SHORTS);
+    await expect(page.locator(yt.SEL.shortsShelf).first()).toBeVisible();
   });
 });

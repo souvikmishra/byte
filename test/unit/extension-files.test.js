@@ -39,6 +39,11 @@ test('install defaults use known storage keys', () => {
   for (const k of Object.keys(installDefaults())) assert.ok(keys.has(k), `unknown key ${k}`);
 });
 
+test('every setting has an install default', () => {
+  const defaults = installDefaults();
+  for (const key of Object.values(Core.STORAGE)) assert.ok(key in defaults, `no install default for ${key}`);
+});
+
 test('install defaults match what content.js assumes for missing keys', () => {
   // A fresh install and a profile where background.js never ran (e.g. storage
   // cleared) must behave the same.

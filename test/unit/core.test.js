@@ -10,6 +10,7 @@ test('readSettings: empty storage gives the defaults', () => {
     gridColumns: Core.GRID_MIN,
     hideThumbs: false,
     hidePromos: true,
+    miniplayer: true,
   });
   assert.deepEqual(Core.readSettings(undefined), Core.readSettings({}));
 });
@@ -20,8 +21,9 @@ test('readSettings: stored values win over defaults', () => {
     [Core.STORAGE.GRID]: 6,
     [Core.STORAGE.HIDE_THUMBS]: true,
     [Core.STORAGE.HIDE_PROMOS]: false,
+    [Core.STORAGE.MINIPLAYER]: false,
   });
-  assert.deepEqual(s, { enabled: false, gridColumns: 6, hideThumbs: true, hidePromos: false });
+  assert.deepEqual(s, { enabled: false, gridColumns: 6, hideThumbs: true, hidePromos: false, miniplayer: false });
 });
 
 test('readSettings: only an explicit false turns default-on settings off', () => {

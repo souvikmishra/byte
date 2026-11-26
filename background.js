@@ -7,5 +7,6 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
     byte_grid_columns: 3,
     byte_hide_thumbs: false,
     byte_hide_promos: true,
+    byte_miniplayer: true,
   });
 });

@@ -29,7 +29,7 @@ YouTube changes its DOM and class names (`ytd-*`, `ytm-*`, `yt*ViewModel*`) with
 Setup once: `npm install && npx playwright install chromium`. Dev-only; nothing from `node_modules`, `test/` or the config files ships (`web-ext-config.cjs` lists what lint/build ignore).
 
 - `npm test`: `node --test` unit tests in `test/unit/` (fast, offline). Covers `lib/core.js` (settings defaults, selector lists, grid CSS, escaping) and cross-file checks (install defaults in `background.js` match `readSettings({})`, manifest load order, permissions unchanged).
-- `npm run lint`: `web-ext lint` (manifest/MV3/Firefox checks). Needs Node ≥ 24.15: Node 24.14.x crashes web-ext with SIGBUS (bug in Node's CJS lexer, nodejs/node#62213), and `prelint` stops with a message instead.
+- `npm run lint`: `web-ext lint` (manifest/MV3/Firefox checks). Expected: 0 errors, 3 known warnings (`MISSING_DATA_COLLECTION_PERMISSIONS`, `BACKGROUND_SERVICE_WORKER_IGNORED` from the Firefox `background.scripts` fallback, `UNSAFE_VAR_ASSIGNMENT` for the escaped insight bar). Needs Node ≥ 24.15: Node 24.14.x crashes web-ext with SIGBUS (bug in Node's CJS lexer, nodejs/node#62213), and `prelint` stops with a message instead.
 - `npm run e2e`: Playwright loads this folder as an unpacked extension in Playwright's Chromium (branded Chrome ignores `--load-extension`) and runs against **live youtube.com**. `HEADED=1 npm run e2e` to watch. Narrow with `npx playwright test popup` or `-g "<title>"`. On failure, `test-results/` has a trace (`npx playwright show-trace …`) and a screenshot.
 
 Pure logic lives in `lib/core.js`: a plain script that `manifest.json` loads before `content.js` (shared content-script world, global `ByteCore`) and that tests `require()`. Put new pure logic there, not in the IIFE.
@@ -41,6 +41,8 @@ Writing e2e tests (`test/e2e/`):
 - Signed-out fresh profiles get an **empty home feed**; test grid/thumbnail features on a channel's `/videos` tab and Shorts on search (`cat`).
 - Ads: `waitForVideoPlaying()` clicks Skip and waits out unskippable ads. Consent: a `SOCS` cookie is preset and `handleConsent()` clicks through if a consent page still appears.
 - Pair "X is hidden" tests with a control that shows X with the feature off, so a test can't pass because YouTube stopped rendering X.
+- Mini player: current players have **no mini player button**; the feature presses YouTube's `i` shortcut (a script-dispatched keydown works), and turning the mini player on makes YouTube navigate to `/` first. "On" is `ytd-app[miniplayer-is-active]`. `playerVideo()`/`expectStillPlaying()` read the video id and time through the player API on `#movie_player`.
+- Not automatable here (check by hand): fullscreen (Playwright's Chromium refuses the Fullscreen API), real ads (`ad-showing` is simulated), Firefox.
 
 Manual check is still worth doing for UI changes: `chrome://extensions` → Developer mode → Load unpacked → this folder → reload after each change. The popup can be previewed by itself through `.claude/launch.json` (`npx serve . -l 7821`).
 

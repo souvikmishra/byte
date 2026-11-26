@@ -1,6 +1,9 @@
 (function () {
   'use strict';
 
+  // Shared pure logic from lib/core.js (listed before this file in manifest.json).
+  const Core = globalThis.ByteCore;
+
   // ── Constants ─────────────────────────────────────────
 
   const STYLE_ID        = 'byte-style';
@@ -12,16 +15,9 @@
   const PROCESSED_ATTR  = 'data-byte-seen';
   const DURATION_ATTR   = 'data-byte-dur';
   const GHOST_CLONE     = 'byte-ghost-clone';
-  const GHOST_HIDDEN    = 'byte-ghost-hidden';
-  const GRID_MIN        = 3;
-
-  const STORAGE = {
-    ENABLED:     'byte_enabled',
-    COUNT:       'byte_count',
-    GRID:        'byte_grid_columns',
-    HIDE_THUMBS: 'byte_hide_thumbs',
-    HIDE_PROMOS: 'byte_hide_promos',
-  };
+  const GHOST_HIDDEN    = Core.GHOST_HIDDEN;
+  const GRID_MIN        = Core.GRID_MIN;
+  const STORAGE         = Core.STORAGE;
 
   // ── State ─────────────────────────────────────────────
 
@@ -35,25 +31,9 @@
 
   // ── Shorts blocking ───────────────────────────────────
 
-  const SELECTORS = [
-    'ytd-reel-shelf-renderer',
-    'ytd-rich-shelf-renderer:has(ytm-shorts-lockup-view-model)',
-    'ytd-rich-section-renderer:has(ytd-reel-shelf-renderer)',
-    'ytd-rich-section-renderer:has(ytm-shorts-lockup-view-model)',
-    'ytm-shorts-lockup-view-model-v2',
-    'ytm-shorts-lockup-view-model',
-    'ytd-guide-entry-renderer:has(a[href^="/shorts"], a[title="Shorts"])',
-    'ytd-mini-guide-entry-renderer:has(a[href^="/shorts"], a[title="Shorts"])',
-    'ytd-shorts',
-    'ytd-rich-item-renderer:has(a[href*="/shorts/"])',
-    'ytd-video-renderer:has(a[href*="/shorts/"])',
-    'ytd-compact-video-renderer:has(a[href*="/shorts/"])',
-    'ytd-grid-video-renderer:has(a[href*="/shorts/"])',
-    'yt-chip-cloud-chip-renderer:has([title="Shorts"])',
-    '[overlay-style="SHORTS"]',
-  ];
+  const SELECTORS = Core.SHORTS_SELECTORS;
 
-  const CSS_RULE = SELECTORS.join(',\n') + ' { display: none !important; }';
+  const CSS_RULE = Core.buildShortsCSS();
 
   function injectCSS() {
     if (document.getElementById(STYLE_ID)) return;
@@ -89,13 +69,7 @@
   // ── Promo sections ────────────────────────────────────
 
   // Hidden via CSS only and kept out of SELECTORS so they don't count as blocked.
-  const PROMO_SELECTORS = [
-    'ytd-rich-section-renderer:has(ytd-brand-video-shelf-renderer)',
-    'ytd-rich-section-renderer:has(ytd-chips-shelf-with-video-shelf-renderer)',
-    'ytd-rich-section-renderer:has(ytd-brand-video-singleton-renderer)',
-    'ytd-brand-video-shelf-renderer',
-    'ytd-brand-video-singleton-renderer',
-  ].join(',\n');
+  const PROMO_SELECTORS = Core.PROMO_SELECTORS.join(',\n');
 
   function applyPromoStyle(enabled) {
     let el = document.getElementById(PROMO_STYLE_ID);
@@ -120,39 +94,7 @@
       el.id = GRID_STYLE_ID;
       (document.head || document.documentElement).appendChild(el);
     }
-    el.textContent = `
-      ytd-rich-grid-renderer {
-        --ytd-rich-grid-items-per-row: ${n} !important;
-        --ytd-rich-grid-slim-items-per-row: ${n} !important;
-        --ytd-rich-grid-item-min-width: 0px !important;
-      }
-      ytd-rich-grid-renderer #contents > ytd-continuation-item-renderer {
-        flex-basis: 100%;
-      }
-      ytd-ghost-grid-renderer .${GHOST_HIDDEN} {
-        display: none;
-      }
-
-      /* YouTube flags first-column items using its own row size, which zeroes the
-         left margin mid-row in flush grids. Give every item the same footprint. */
-      ytd-rich-grid-renderer #contents > ytd-rich-item-renderer[no-gutter-margins]:not([is-compact-grid]):not([is-shorts-grid]),
-      ytd-rich-grid-renderer:has(#contents > ytd-rich-item-renderer[no-gutter-margins]) ytd-ghost-grid-renderer:not([is-shorts]) .ghost-card {
-        margin-left: 0;
-        margin-right: var(--ytd-rich-grid-item-margin);
-      }
-      ytd-rich-grid-renderer #contents > ytd-rich-item-renderer[is-in-first-column]:not([no-gutter-margins]):not([is-compact-grid]):not([is-shorts-grid]) {
-        margin-left: calc(var(--ytd-rich-grid-item-margin) / 2);
-      }
-
-      #home-container-media {
-        grid-template-columns: repeat(${n}, minmax(0, 1fr)) !important;
-      }
-      /* Hide an incomplete last row of the first-load skeleton. */
-      #home-container-media > :nth-child(${n}n + ${n + 1}):nth-last-child(-n + ${n - 1}),
-      #home-container-media > :nth-child(${n}n + ${n + 1}):nth-last-child(-n + ${n - 1}) ~ * {
-        display: none;
-      }
-    `;
+    el.textContent = Core.buildGridCSS(n);
   }
 
   // YouTube stamps skeleton rows at its own row size; keep its row count but use ours.
@@ -318,13 +260,7 @@
     (document.head || document.documentElement).appendChild(el);
   }
 
-  function escapeAttr(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-  }
+  const escapeAttr = Core.escapeAttr;
 
   function collectChannelData() {
     const map = new Map();
@@ -439,10 +375,11 @@
 
   function init() {
     chrome.storage.local.get([STORAGE.ENABLED, STORAGE.GRID, STORAGE.HIDE_THUMBS, STORAGE.HIDE_PROMOS], data => {
-      isEnabled        = data[STORAGE.ENABLED] !== false;
-      gridColumns      = data[STORAGE.GRID] ?? GRID_MIN;
-      hideThumbsEnabled = data[STORAGE.HIDE_THUMBS] === true;
-      hidePromosEnabled = data[STORAGE.HIDE_PROMOS] !== false;
+      const settings    = Core.readSettings(data);
+      isEnabled         = settings.enabled;
+      gridColumns       = settings.gridColumns;
+      hideThumbsEnabled = settings.hideThumbs;
+      hidePromosEnabled = settings.hidePromos;
       if (isEnabled) enable();
     });
   }

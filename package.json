@@ -1,0 +1,18 @@
+{
+  "name": "byte-dev",
+  "private": true,
+  "description": "Dev-only tooling for the BYTE extension. Nothing here ships in the extension.",
+  "scripts": {
+    "prelint": "node scripts/check-node.cjs",
+    "lint": "web-ext lint",
+    "test": "node --test \"test/unit/**/*.test.js\"",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "web-ext": "10.8.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

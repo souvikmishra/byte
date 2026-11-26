@@ -20,6 +20,10 @@ const SEL = {
   guideShortsEntry: 'ytd-guide-entry-renderer:has(a[title="Shorts"]), ytd-guide-entry-renderer:has(a[href^="/shorts"])',
   gridItem: 'ytd-rich-grid-renderer #contents > ytd-rich-item-renderer',
   player: '#movie_player',
+  channelLink: 'ytd-watch-metadata #owner a[href^="/@"]',
+  relatedVideo: '#related a[href^="/watch"]',
+  guideButton: 'ytd-masthead #guide-button button, ytd-masthead button#guide-button, ytd-masthead yt-icon-button#guide-button',
+  guideDrawerLink: href => `tp-yt-app-drawer#guide ytd-guide-entry-renderer a[href="${href}"]`,
   skipAd: '.ytp-skip-ad-button, .ytp-ad-skip-button, .ytp-ad-skip-button-modern',
 };
 
@@ -122,6 +126,16 @@ function miniplayerActive(page) {
   return page.locator('ytd-app').evaluate(app => app.hasAttribute('miniplayer-is-active'));
 }
 
+// Asserts the old behavior: no mini player, and the video that was playing
+// stopped (unloaded, paused, or replaced by another video).
+async function expectVideoStopped(page, before) {
+  await expect.poll(async () => {
+    const now = await playerVideo(page);
+    const stillPlaying = now.id === before.id && now.paused === false && now.hasSrc;
+    return !(await miniplayerActive(page)) && !stillPlaying;
+  }, { timeout: 15_000, message: `no mini player, and video ${before.id} no longer playing` }).toBe(true);
+}
+
 async function gotoWatch(page, videoId = TEST_VIDEO_ID) {
   await gotoYouTube(page, `/watch?v=${videoId}`);
   await waitForVideoPlaying(page);
@@ -131,5 +145,5 @@ module.exports = {
   ORIGIN, TEST_VIDEO_ID, SEL,
   handleConsent, gotoYouTube, gotoSearch, gotoWatch,
   visibleShortsLinkCount, gridItemsPerRow, playerState, waitForVideoPlaying,
-  playerVideo, expectStillPlaying, miniplayerActive,
+  playerVideo, expectStillPlaying, expectVideoStopped, miniplayerActive,
 };

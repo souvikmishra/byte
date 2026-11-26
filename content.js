@@ -351,6 +351,218 @@
     observer = null;
   }
 
+  // ── Mini player on browse ─────────────────────────────
+  // On /watch, a search or a click to a list page (home, channel, feed, …)
+  // first moves the video into YouTube's own mini player, then replays the
+  // action through YouTube's in-app navigation. Timeouts replay it anyway, and
+  // errors fall back to a normal page load. Spec: docs/miniplayer-on-browse.md
+
+  const MINI = Core.MINIPLAYER_SELECTORS;
+  const MINI_TIMEOUT_MS = 2500; // give up waiting and replay the action
+  const MINI_RETRY_MS   = 800;  // press again if YouTube ignored the first press
+  const MINI_SETTLE_MS  = 1000; // mini player on but no navigation seen: replay
+
+  let miniplayerEnabled = true;
+  let replaying         = false;
+  let pendingAction     = null; // { kind: 'search', query } | { kind: 'link', anchor, href }
+
+  function isMiniplayerActive() {
+    return !!document.querySelector(MINI.active);
+  }
+
+  function miniplayerSkipReason() {
+    // Getters keep this cheap: the checks stop at the first reason.
+    return Core.miniplayerSkipReason({
+      enabled: miniplayerEnabled,
+      get onWatch()          { return Core.isWatchPath(location.pathname); },
+      replaying,
+      get miniplayerActive() { return isMiniplayerActive(); },
+      get fullscreen()       { return !!document.fullscreenElement; },
+      get adShowing()        { return !!document.querySelector(MINI.adShowing); },
+      get hasPlayer()        { return !!document.querySelector(MINI.player); },
+    });
+  }
+
+  // While an action is waiting for the mini player, newer actions replace it.
+  function shouldIntercept() {
+    return !replaying && (pendingAction !== null || miniplayerSkipReason() === null);
+  }
+
+  // Runs fn with `replaying` set so our listeners let the action through.
+  // Dispatching click/submit is synchronous, so the flag covers it exactly.
+  function replay(fn) {
+    replaying = true;
+    try { fn(); } finally { replaying = false; }
+  }
+
+  function actionUrl(action) {
+    return action.kind === 'search'
+      ? '/results?search_query=' + encodeURIComponent(action.query)
+      : new URL(action.href, location.href).href;
+  }
+
+  function replaySearch(query) {
+    const input  = document.querySelector(MINI.searchInput);
+    const button = document.querySelector(MINI.searchButton);
+    if (!input || !button) {
+      location.href = actionUrl({ kind: 'search', query });
+      return;
+    }
+    input.value = query;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    replay(() => button.click());
+  }
+
+  function replayLink(anchor, href) {
+    const url = new URL(href, location.href);
+    if (url.pathname + url.search === location.pathname + location.search) return; // already there
+    let target = anchor && anchor.isConnected ? anchor : null;
+    if (!target) target = document.querySelector(`a[href="${CSS.escape(href)}"]`);
+    if (target) replay(() => target.click());
+    else location.href = url.href;
+  }
+
+  function replayAction(action) {
+    try {
+      if (action.kind === 'search') replaySearch(action.query);
+      else replayLink(action.anchor, action.href);
+    } catch (_) {
+      location.href = actionUrl(action);
+    }
+  }
+
+  // Current players have no mini player button; the "i" shortcut works and
+  // YouTube accepts it from a script.
+  function pressMiniplayer() {
+    const button = document.querySelector(MINI.button);
+    if (button && button.checkVisibility && button.checkVisibility()) {
+      button.click();
+      return;
+    }
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'i', code: 'KeyI', keyCode: 73, which: 73, bubbles: true, cancelable: true,
+    }));
+  }
+
+  // Turns the mini player on (YouTube then navigates to /) and replays
+  // pendingAction once the mini player is on and that navigation is done.
+  function moveToMiniplayerThen(action) {
+    if (pendingAction) {
+      pendingAction = action;
+      return;
+    }
+    pendingAction = action;
+
+    let navStarted  = false;
+    let navFinished = false;
+    let done        = false;
+    let settleTimer = null;
+    let timeoutTimer = null;
+    let retryTimer   = null;
+    let appObserver  = null;
+    const app = document.querySelector('ytd-app');
+
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timeoutTimer);
+      clearTimeout(retryTimer);
+      clearTimeout(settleTimer);
+      if (appObserver) appObserver.disconnect();
+      document.removeEventListener('yt-navigate-start', onStart, true);
+      document.removeEventListener('yt-navigate-finish', onFinish, true);
+      const next = pendingAction;
+      pendingAction = null;
+      replayAction(next);
+    };
+    const check = () => {
+      if (!isMiniplayerActive()) return;
+      if (navFinished) finish();
+      else if (!settleTimer) settleTimer = setTimeout(finish, MINI_SETTLE_MS);
+    };
+    const onStart  = () => { navStarted = true; };
+    const onFinish = () => { navFinished = true; check(); };
+
+    document.addEventListener('yt-navigate-start', onStart, true);
+    document.addEventListener('yt-navigate-finish', onFinish, true);
+    if (app) {
+      appObserver = new MutationObserver(check);
+      appObserver.observe(app, { attributes: true, attributeFilter: ['miniplayer-is-active'] });
+    }
+    timeoutTimer = setTimeout(finish, MINI_TIMEOUT_MS);
+    // A second press while the mini player is on would close it, so only
+    // retry when nothing happened at all.
+    retryTimer = setTimeout(() => {
+      if (!done && !navStarted && !isMiniplayerActive()) pressMiniplayer();
+    }, MINI_RETRY_MS);
+
+    try {
+      pressMiniplayer();
+    } catch (_) {
+      finish();
+    }
+  }
+
+  function intercept(e, action) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    try {
+      moveToMiniplayerThen(action);
+    } catch (_) {
+      pendingAction = null;
+      location.href = actionUrl(action);
+    }
+  }
+
+  function currentSearchQuery() {
+    const input = document.querySelector(MINI.searchInput);
+    return input ? input.value.trim() : '';
+  }
+
+  function blurSearch() {
+    const el = document.activeElement;
+    if (el && el.matches && el.matches(MINI.searchInput)) el.blur();
+  }
+
+  // Capture phase on document runs before YouTube's own handlers.
+  document.addEventListener('click', e => {
+    if (!Core.isPlainLeftClick(e) || !(e.target instanceof Element)) return;
+    if (!shouldIntercept()) return;
+
+    if (e.target.closest(MINI.searchButton)) {
+      const query = currentSearchQuery();
+      if (!query) return;
+      blurSearch();
+      intercept(e, { kind: 'search', query });
+      return;
+    }
+
+    const anchor = e.target.closest('a[href]');
+    if (!anchor || Core.targetOpensNewContext(anchor.getAttribute('target'))) return;
+    const href = anchor.getAttribute('href');
+    if (Core.classifyLink(href, location.href) !== 'list') return;
+    intercept(e, { kind: 'link', anchor, href });
+  }, true);
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.isComposing || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!(e.target instanceof Element) || !e.target.matches(MINI.searchInput)) return;
+    if (!shouldIntercept()) return;
+    const query = e.target.value.trim();
+    if (!query) return;
+    blurSearch();
+    intercept(e, { kind: 'search', query });
+  }, true);
+
+  document.addEventListener('submit', e => {
+    if (!(e.target instanceof Element) || !e.target.closest(MINI.searchbox)) return;
+    if (!shouldIntercept()) return;
+    const query = currentSearchQuery();
+    if (!query) return;
+    blurSearch();
+    intercept(e, { kind: 'search', query });
+  }, true);
+
   // ── Lifecycle ─────────────────────────────────────────
 
   function enable() {
@@ -374,12 +586,13 @@
   }
 
   function init() {
-    chrome.storage.local.get([STORAGE.ENABLED, STORAGE.GRID, STORAGE.HIDE_THUMBS, STORAGE.HIDE_PROMOS], data => {
+    chrome.storage.local.get([STORAGE.ENABLED, STORAGE.GRID, STORAGE.HIDE_THUMBS, STORAGE.HIDE_PROMOS, STORAGE.MINIPLAYER], data => {
       const settings    = Core.readSettings(data);
       isEnabled         = settings.enabled;
       gridColumns       = settings.gridColumns;
       hideThumbsEnabled = settings.hideThumbs;
       hidePromosEnabled = settings.hidePromos;
+      miniplayerEnabled = settings.miniplayer;
       if (isEnabled) enable();
     });
   }
@@ -424,6 +637,10 @@
         applyPromoStyle(hidePromosEnabled);
         updateInsightBar();
       }
+      sendResponse({ ok: true });
+    }
+    if (msg.type === 'SET_MINIPLAYER') {
+      miniplayerEnabled = msg.enabled;
       sendResponse({ ok: true });
     }
   });

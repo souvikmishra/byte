@@ -11,7 +11,8 @@ const TEST_VIDEO_ID = 'aqz-KE-bpKQ';
 
 const SEL = {
   app: 'ytd-app',
-  searchInput: 'yt-searchbox input, ytd-searchbox input#search',
+  // yt-searchbox also contains a hidden <input type=file> for image search.
+  searchInput: 'yt-searchbox input[name="search_query"], ytd-searchbox input#search',
   searchButton: 'yt-searchbox button.ytSearchboxComponentSearchButton, ytd-searchbox button#search-icon-legacy',
   searchResult: 'ytd-search ytd-video-renderer, ytd-search yt-lockup-view-model',
   shortsLockup: 'ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2',
@@ -94,6 +95,33 @@ async function waitForVideoPlaying(page, { timeout = 90_000 } = {}) {
     .toBe('playing');
 }
 
+// The player's current video id and time, read through YouTube's player API
+// on #movie_player (main world). Works for the mini player too: it's the same element.
+async function playerVideo(page) {
+  return page.evaluate(() => {
+    const p = document.querySelector('#movie_player');
+    const v = p && p.querySelector('video');
+    return {
+      id: p && typeof p.getVideoData === 'function' ? p.getVideoData().video_id : null,
+      time: v ? v.currentTime : null,
+      paused: v ? v.paused : null,
+      hasSrc: !!(v && v.src),
+    };
+  });
+}
+
+// Asserts the same video keeps playing: time moves forward and never resets.
+async function expectStillPlaying(page, before) {
+  await expect.poll(async () => {
+    const now = await playerVideo(page);
+    return now.id === before.id && now.paused === false && now.time > before.time + 0.5;
+  }, { timeout: 15_000, message: `video ${before.id} still playing past ${before.time.toFixed(1)}s` }).toBe(true);
+}
+
+function miniplayerActive(page) {
+  return page.locator('ytd-app').evaluate(app => app.hasAttribute('miniplayer-is-active'));
+}
+
 async function gotoWatch(page, videoId = TEST_VIDEO_ID) {
   await gotoYouTube(page, `/watch?v=${videoId}`);
   await waitForVideoPlaying(page);
@@ -103,4 +131,5 @@ module.exports = {
   ORIGIN, TEST_VIDEO_ID, SEL,
   handleConsent, gotoYouTube, gotoSearch, gotoWatch,
   visibleShortsLinkCount, gridItemsPerRow, playerState, waitForVideoPlaying,
+  playerVideo, expectStillPlaying, miniplayerActive,
 };

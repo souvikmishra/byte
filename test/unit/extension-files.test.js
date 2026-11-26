@@ -51,10 +51,19 @@ test('manifest loads lib/core.js before content.js', () => {
   assert.equal(cs.run_at, 'document_start');
 });
 
+test('background runs in Chrome (service_worker) and Firefox (scripts)', () => {
+  // Firefox MV3 has no background service workers and uses "scripts"; Chrome
+  // 121+ uses "service_worker" and ignores "scripts" (with a "Warnings" note on
+  // chrome://extensions in developer mode). Both must be the same file.
+  assert.equal(manifest.background.service_worker, 'background.js');
+  assert.deepEqual(manifest.background.scripts, [manifest.background.service_worker]);
+});
+
 test('every file the manifest references exists', () => {
   const files = [
     ...manifest.content_scripts.flatMap(cs => cs.js),
     manifest.background.service_worker,
+    ...manifest.background.scripts,
     manifest.action.default_popup,
     ...Object.values(manifest.icons),
     ...Object.values(manifest.action.default_icon),

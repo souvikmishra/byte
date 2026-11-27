@@ -74,7 +74,15 @@
   }
   window.addEventListener('error', e => add(`page error: ${e.message}`));
 
-  // Video state whenever it changes, for up to 2 minutes.
+  // Every URL the tab shows (YouTube can switch pages without a navigation
+  // event, e.g. going back to a cached list) and the video state whenever it
+  // changes, for up to 2 minutes.
+  let lastUrl = location.pathname + location.search;
+  const urlTimer = setInterval(() => {
+    const u = location.pathname + location.search;
+    if (u !== lastUrl) { add(`URL -> ${u} mini=${mini()}`); lastUrl = u; }
+  }, 20);
+  setTimeout(() => clearInterval(urlTimer), 120000);
   let last = '';
   const timer = setInterval(() => {
     const s = video().replace(/@[\d.]+s/, '');

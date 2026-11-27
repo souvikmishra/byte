@@ -8,7 +8,7 @@ A Chrome + Firefox (MV3) extension that cleans up YouTube: it hides Shorts, sets
 - `lib/core.js`: pure logic (selector lists, settings defaults, CSS builders) shared by `content.js` and the unit tests.
 - `background.js`: service worker; only sets storage defaults on install.
 - `popup/`: the toolbar popup (`popup.html/.css/.js`).
-- `scripts/generate-icons.py`: regenerates `icons/*.png` (stdlib only).
+- `scripts/generate-icons.js`: regenerates `icons/*.png` from `lib/mark.js`; Node stdlib only.
 - `docs/`: task specs. Read the relevant one before starting a task.
 - `test/unit/`, `test/e2e/`, `package.json`, `playwright.config.js`, `web-ext-config.cjs`: dev-only tooling.
 

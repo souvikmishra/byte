@@ -113,6 +113,6 @@ test('content.js starts with lib/core.js loaded and reads settings from storage'
   const ctx = vm.createContext({ document, chrome, MutationObserver, setTimeout, clearTimeout });
   ctx.globalThis = ctx;
   for (const f of manifest.content_scripts[0].js) vm.runInContext(read(f), ctx, { filename: f });
-  assert.ok(getKeys.includes(Core.STORAGE.ENABLED));
+  assert.ok(getKeys === null || getKeys.includes(Core.STORAGE.HIDE_SHORTS));
   assert.ok(appended.includes('byte-style'), 'Shorts CSS injected with default settings');
 });

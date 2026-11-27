@@ -34,12 +34,12 @@ test.describe('Popup', () => {
     await toggle(popup, 'toggle-enabled').click();
     await expect(popup.locator('#status-badge')).toHaveText('OFF');
     await expect.poll(() => yt.visibleShortsLinkCount(page)).toBeGreaterThan(0);
-    expect((await extension.storageIn(popup)).byte_enabled).toBe(false);
+    expect((await extension.storageIn(popup)).byte_hide_shorts).toBe(false);
 
     await toggle(popup, 'toggle-enabled').click();
     await expect(popup.locator('#status-badge')).toHaveText('ON');
     await expect.poll(() => yt.visibleShortsLinkCount(page)).toBe(0);
-    expect((await extension.storageIn(popup)).byte_enabled).toBe(true);
+    expect((await extension.storageIn(popup)).byte_hide_shorts).toBe(true);
     await assertNoReload();
   });
 

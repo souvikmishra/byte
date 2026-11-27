@@ -30,9 +30,9 @@ function renderStepper(n) {
 // ── Load persisted settings ───────────────────────────
 
 chrome.storage.local.get(
-  ['byte_enabled', 'byte_count', 'byte_grid_columns', 'byte_hide_thumbs', 'byte_hide_promos', 'byte_miniplayer'],
+  ['byte_hide_shorts', 'byte_count', 'byte_grid_columns', 'byte_hide_thumbs', 'byte_hide_promos', 'byte_miniplayer'],
   (data) => {
-    const enabled = data.byte_enabled !== false;
+    const enabled = data.byte_hide_shorts !== false;
     const cols    = data.byte_grid_columns ?? GRID_MIN;
     const thumbs  = data.byte_hide_thumbs === true;
     const promos  = data.byte_hide_promos !== false;
@@ -65,7 +65,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
 
 toggleEnabled.addEventListener('change', () => {
   const enabled = toggleEnabled.checked;
-  chrome.storage.local.set({ byte_enabled: enabled });
+  chrome.storage.local.set({ byte_hide_shorts: enabled });
   applyStatus(enabled);
   chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
     if (tab) chrome.tabs.sendMessage(tab.id, { type: 'SET_SETTINGS', enabled });

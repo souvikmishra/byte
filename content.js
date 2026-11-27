@@ -652,9 +652,9 @@
   }
 
   function init() {
-    chrome.storage.local.get([STORAGE.ENABLED, STORAGE.GRID, STORAGE.HIDE_THUMBS, STORAGE.HIDE_PROMOS, STORAGE.MINIPLAYER], data => {
+    chrome.storage.local.get([STORAGE.HIDE_SHORTS, STORAGE.GRID, STORAGE.HIDE_THUMBS, STORAGE.HIDE_PROMOS, STORAGE.MINIPLAYER], data => {
       const settings    = Core.readSettings(data);
-      isEnabled         = settings.enabled;
+      isEnabled         = settings.hideShorts;
       gridColumns       = settings.gridColumns;
       hideThumbsEnabled = settings.hideThumbs;
       hidePromosEnabled = settings.hidePromos;

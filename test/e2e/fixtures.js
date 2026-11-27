@@ -95,7 +95,7 @@ const test = base.extend({
       // Wait until background.js has written its install defaults, so a later
       // setStorage() can't be overwritten by onInstalled.
       async waitForInstallDefaults() {
-        await expect.poll(async () => (await helpers.getStorage()).byte_enabled,
+        await expect.poll(async () => (await helpers.getStorage()).byte_hide_shorts,
           { message: 'install defaults written by background.js' }).not.toBeUndefined();
       },
 

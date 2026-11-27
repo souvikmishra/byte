@@ -31,7 +31,7 @@ test.describe('Shorts hidden', () => {
 
   test('control: with Block Shorts off, the same search shows Shorts', async ({ page, extension }) => {
     // Proves the test above can fail: the page really has visible Shorts.
-    await extension.setStorage({ byte_enabled: false });
+    await extension.setStorage({ byte_hide_shorts: false });
     await yt.gotoSearch(page, SEARCH_WITH_SHORTS);
     await expect.poll(() => yt.visibleShortsLinkCount(page)).toBeGreaterThan(0);
   });
@@ -44,7 +44,7 @@ test.describe('Shorts hidden', () => {
   });
 
   test('control: with Block Shorts off, the Shorts sidebar entry is visible', async ({ page, extension }) => {
-    await extension.setStorage({ byte_enabled: false });
+    await extension.setStorage({ byte_hide_shorts: false });
     await yt.gotoYouTube(page, '/');
     await expect(page.locator(yt.SEL.guideShortsEntry).first()).toBeVisible();
   });
@@ -82,7 +82,7 @@ test.describe('Shorts hidden', () => {
   });
 
   test('control: with Block Shorts off, the Shorts shelves on search are visible', async ({ page, extension }) => {
-    await extension.setStorage({ byte_enabled: false });
+    await extension.setStorage({ byte_hide_shorts: false });
     await yt.gotoSearch(page, SEARCH_WITH_SHORTS);
     await expect(page.locator(yt.SEL.shortsShelf).first()).toBeVisible();
   });

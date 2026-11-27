@@ -4,34 +4,74 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Core = require('../../lib/core.js');
 
-test('readSettings: empty storage gives the defaults', () => {
-  assert.deepEqual(Core.readSettings({}), {
-    enabled: true,
-    gridColumns: Core.GRID_MIN,
-    hideThumbs: false,
-    hidePromos: true,
-    miniplayer: true,
-  });
+test('readSettings defaults', () => {
+  assert.deepEqual(Core.readSettings({}), { hideShorts: true, paused: false, channelBar: true, accent: 'lime',
+    gridColumns: 3, hideThumbs: false, hidePromos: true, miniplayer: true });
   assert.deepEqual(Core.readSettings(undefined), Core.readSettings({}));
 });
 
 test('readSettings: stored values win over defaults', () => {
   const s = Core.readSettings({
-    [Core.STORAGE.ENABLED]: false,
+    [Core.STORAGE.HIDE_SHORTS]: false,
+    [Core.STORAGE.PAUSED]: true,
+    [Core.STORAGE.CHANNEL_BAR]: false,
+    [Core.STORAGE.ACCENT]: 'violet',
     [Core.STORAGE.GRID]: 6,
     [Core.STORAGE.HIDE_THUMBS]: true,
     [Core.STORAGE.HIDE_PROMOS]: false,
     [Core.STORAGE.MINIPLAYER]: false,
   });
-  assert.deepEqual(s, { enabled: false, gridColumns: 6, hideThumbs: true, hidePromos: false, miniplayer: false });
+  assert.deepEqual(s, { hideShorts: false, paused: true, channelBar: false, accent: 'violet',
+    gridColumns: 6, hideThumbs: true, hidePromos: false, miniplayer: false });
+});
+
+test('readSettings ignores corrupt values', () => {
+  const s = Core.readSettings({ byte_accent: 'pink', byte_grid_columns: 'x', byte_enabled: false });
+  assert.equal(s.accent, 'lime'); assert.equal(s.gridColumns, 3); assert.equal(s.hideShorts, true);
 });
 
 test('readSettings: only an explicit false turns default-on settings off', () => {
   for (const v of [undefined, null, 0, '', 'false', true]) {
-    const s = Core.readSettings({ [Core.STORAGE.ENABLED]: v, [Core.STORAGE.HIDE_PROMOS]: v });
-    assert.equal(s.enabled, true, `enabled with ${JSON.stringify(v)}`);
+    const s = Core.readSettings({ [Core.STORAGE.HIDE_SHORTS]: v, [Core.STORAGE.HIDE_PROMOS]: v, [Core.STORAGE.CHANNEL_BAR]: v });
+    assert.equal(s.hideShorts, true, `hideShorts with ${JSON.stringify(v)}`);
     assert.equal(s.hidePromos, true, `hidePromos with ${JSON.stringify(v)}`);
+    assert.equal(s.channelBar, true, `channelBar with ${JSON.stringify(v)}`);
   }
+});
+
+test('readSettings: only an explicit true turns paused on', () => {
+  for (const v of [undefined, null, 1, 'true', false]) {
+    assert.equal(Core.readSettings({ [Core.STORAGE.PAUSED]: v }).paused, false, JSON.stringify(v));
+  }
+});
+
+test('paletteFor falls back to lime', () => assert.equal(Core.paletteFor('nope').accent, '#C6F135'));
+
+test('PALETTES holds the four accents', () => {
+  assert.deepEqual(Core.PALETTES.map(p => [p.id, p.name, p.accent, p.onAccent]), [
+    ['lime', 'Lime', '#C6F135', '#141414'],
+    ['cobalt', 'Cobalt', '#3D5AFE', '#FFFFFF'],
+    ['tangerine', 'Tangerine', '#FF7A1A', '#1A1208'],
+    ['violet', 'Violet', '#8B5CF6', '#FFFFFF'],
+  ]);
+  assert.equal(Core.DEFAULT_ACCENT, 'lime');
+  assert.equal(Core.paletteFor('cobalt').accent, '#3D5AFE');
+});
+
+test('effectiveState: paused turns everything off, including the mini player', () => {
+  const e = Core.effectiveState(Core.readSettings({ byte_paused: true }));
+  assert.deepEqual(e, { hideShorts: false, hidePromos: false, hideThumbs: false, channelBar: false, gridColumns: null, miniplayer: false });
+});
+
+test('effectiveState: comparing turns visuals off but keeps the mini player', () => {
+  const e = Core.effectiveState(Core.readSettings({}), { comparing: true });
+  assert.equal(e.hideShorts, false); assert.equal(e.gridColumns, null); assert.equal(e.miniplayer, true);
+});
+
+test('effectiveState: switches are independent', () => {
+  const e = Core.effectiveState(Core.readSettings({ byte_hide_shorts: false }));
+  assert.equal(e.hideShorts, false); assert.equal(e.hidePromos, true); assert.equal(e.channelBar, true);
+  assert.equal(e.gridColumns, 3);
 });
 
 test('readSettings: only an explicit true turns hide-thumbnails on', () => {
@@ -40,9 +80,9 @@ test('readSettings: only an explicit true turns hide-thumbnails on', () => {
   }
 });
 
-test('readSettings: grid columns keep 0 but default null/undefined', () => {
-  assert.equal(Core.readSettings({ [Core.STORAGE.GRID]: null }).gridColumns, Core.GRID_MIN);
-  assert.equal(Core.readSettings({ [Core.STORAGE.GRID]: 0 }).gridColumns, 0);
+test('readSettings: grid columns must be an integer >= GRID_MIN', () => {
+  for (const v of [null, 0, 2, 3.5, 'x', NaN]) assert.equal(Core.readSettings({ [Core.STORAGE.GRID]: v }).gridColumns, Core.GRID_MIN, String(v));
+  assert.equal(Core.readSettings({ [Core.STORAGE.GRID]: 7 }).gridColumns, 7);
 });
 
 test('storage keys are unique and namespaced', () => {

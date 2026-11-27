@@ -10,7 +10,9 @@ async function search(page, query, { via = 'enter' } = {}) {
   else await page.locator(yt.SEL.searchButton).first().click();
 }
 
-const resultsUrl = query => new RegExp(`/results\\?search_query=${encodeURIComponent(query).replace(/%20/g, '\\+')}`);
+// Compares the decoded query, so any spelling of it (spaces as + or %20,
+// parentheses in a suggestion) matches.
+const resultsUrl = query => url => url.pathname === '/results' && url.searchParams.get('search_query') === query;
 
 async function expectOnResults(page, query) {
   await page.waitForURL(resultsUrl(query));

@@ -4,7 +4,6 @@ const yt = require('./youtube');
 // A channel's Videos tab uses the same rich grid as home and Subscriptions,
 // and has content for signed-out users.
 const GRID_PAGE = '/@YouTube/videos';
-const THUMBNAIL = 'a.ytLockupViewModelContentImage';
 
 const toggle = (popup, id) => popup.locator(`label[for="${id}"]`);
 
@@ -46,7 +45,7 @@ test.describe('Popup', () => {
 
   test('Hide thumbnails toggle hides thumbnails and adds durations', async ({ page, extension }) => {
     await yt.gotoYouTube(page, GRID_PAGE);
-    const thumbs = page.locator(`${yt.SEL.gridItem} ${THUMBNAIL}`);
+    const thumbs = page.locator(`${yt.SEL.gridItem} ${yt.SEL.lockupThumbnail}`);
     await expect(thumbs.first()).toBeVisible();
 
     const popup = await extension.openPopup(page);

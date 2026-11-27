@@ -16,6 +16,7 @@ const SEL = {
   searchButton: 'yt-searchbox button.ytSearchboxComponentSearchButton, ytd-searchbox button#search-icon-legacy',
   searchSuggestion: 'yt-searchbox [role="listbox"] [role="option"], ytd-searchbox [role="listbox"] [role="option"]',
   searchResult: 'ytd-search ytd-video-renderer, ytd-search yt-lockup-view-model',
+  searchResultVideoLink: 'ytd-search a#video-title[href^="/watch"], ytd-search yt-lockup-view-model a[href^="/watch"]',
   shortsLockup: 'ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2',
   // Search shelves with a "Shorts" header; the same tag can hold other content.
   shortsShelf: 'grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2)',
@@ -26,9 +27,14 @@ const SEL = {
   shortsLink: 'a[href*="/shorts/"]',
   guideShortsEntry: 'ytd-guide-entry-renderer:has(a[title="Shorts"]), ytd-guide-entry-renderer:has(a[href^="/shorts"])',
   gridItem: 'ytd-rich-grid-renderer #contents > ytd-rich-item-renderer',
+  // The thumbnail link inside a yt-lockup-view-model card.
+  lockupThumbnail: 'a.ytLockupViewModelContentImage',
+  channelPage: 'ytd-browse[page-subtype="channels"]',
   player: '#movie_player',
+  fullscreenButton: '.ytp-fullscreen-button',
   channelLink: 'ytd-watch-metadata #owner a[href^="/@"]',
   relatedVideo: '#related a[href^="/watch"]',
+  guideEntry: 'ytd-guide-entry-renderer',
   guideButton: 'ytd-masthead #guide-button button, ytd-masthead button#guide-button, ytd-masthead yt-icon-button#guide-button',
   guideDrawerLink: href => `tp-yt-app-drawer#guide ytd-guide-entry-renderer a[href="${href}"]`,
   skipAd: '.ytp-skip-ad-button, .ytp-ad-skip-button, .ytp-ad-skip-button-modern',
@@ -66,6 +72,15 @@ async function gotoYouTube(page, pathAndQuery) {
   await failIfRateLimited(page);
   await handleConsent(page);
   await expect(page.locator(SEL.app)).toBeAttached();
+}
+
+// Types a query into the masthead search box and submits it with Enter or
+// the search button.
+async function search(page, query, { via = 'enter' } = {}) {
+  const input = page.locator(SEL.searchInput).first();
+  await input.fill(query);
+  if (via === 'enter') await input.press('Enter');
+  else await page.locator(SEL.searchButton).first().click();
 }
 
 async function gotoSearch(page, query) {
@@ -163,7 +178,7 @@ async function gotoWatch(page, videoId = TEST_VIDEO_ID) {
 
 module.exports = {
   ORIGIN, TEST_VIDEO_ID, SEL,
-  handleConsent, failIfRateLimited, gotoYouTube, gotoSearch, gotoWatch,
+  handleConsent, failIfRateLimited, gotoYouTube, gotoSearch, gotoWatch, search,
   visibleShortsLinkCount, gridItemsPerRow, playerState, waitForVideoPlaying,
   playerVideo, expectStillPlaying, expectVideoStopped, miniplayerActive,
 };

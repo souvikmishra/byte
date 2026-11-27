@@ -3,13 +3,6 @@ const yt = require('./youtube');
 
 // Checklist: docs/miniplayer-on-browse.md. Each test starts on a playing video.
 
-async function search(page, query, { via = 'enter' } = {}) {
-  const input = page.locator(yt.SEL.searchInput).first();
-  await input.fill(query);
-  if (via === 'enter') await input.press('Enter');
-  else await page.locator(yt.SEL.searchButton).first().click();
-}
-
 // Compares the decoded query, so any spelling of it (spaces as + or %20,
 // parentheses in a suggestion) matches.
 const resultsUrl = query => url => url.pathname === '/results' && url.searchParams.get('search_query') === query;
@@ -32,14 +25,14 @@ test.describe('Mini player on browse', () => {
   });
 
   test('search from a playing video: mini player keeps playing and results load', async ({ page }) => {
-    await search(page, 'lofi hip hop');
+    await yt.search(page, 'lofi hip hop');
     await expectOnResults(page, 'lofi hip hop');
     expect(await yt.miniplayerActive(page)).toBe(true);
     await yt.expectStillPlaying(page, before);
   });
 
   test('search button: same as Enter', async ({ page }) => {
-    await search(page, 'jazz piano', { via: 'button' });
+    await yt.search(page, 'jazz piano', { via: 'button' });
     await expectOnResults(page, 'jazz piano');
     await expectMiniplayerPlaying(page, before);
   });
@@ -92,7 +85,7 @@ test.describe('Mini player on browse', () => {
     const href = await link.getAttribute('href');
     await link.click();
     await page.waitForURL(url => url.pathname === href);
-    await expect(page.locator('ytd-browse[page-subtype="channels"]')).toBeVisible();
+    await expect(page.locator(yt.SEL.channelPage)).toBeVisible();
     await expectMiniplayerPlaying(page, before);
   });
 
@@ -166,12 +159,12 @@ test.describe('Mini player on browse', () => {
   });
 
   test('mini player already on, search again: results load and the mini player stays', async ({ page }) => {
-    await search(page, 'lofi hip hop');
+    await yt.search(page, 'lofi hip hop');
     await expectOnResults(page, 'lofi hip hop');
     await expectMiniplayerPlaying(page, before);
     const mid = await yt.playerVideo(page);
 
-    await search(page, 'rain sounds');
+    await yt.search(page, 'rain sounds');
     await expectOnResults(page, 'rain sounds');
     await expectMiniplayerPlaying(page, mid);
   });
@@ -193,7 +186,7 @@ test.describe('Mini player on browse', () => {
     // or headed, so this is a manual check. The skip rule itself is unit-tested.
     test.fixme(true, 'Fullscreen API not available under Playwright: check by hand');
     await page.locator(yt.SEL.player).hover(); // show the controls
-    await page.locator('.ytp-fullscreen-button').click();
+    await page.locator(yt.SEL.fullscreenButton).click();
     await expect.poll(() => page.evaluate(() => !!document.fullscreenElement), { message: 'fullscreen on' }).toBe(true);
     const href = await page.locator(yt.SEL.channelLink).first().getAttribute('href');
     // The masthead is hidden in fullscreen; a script click is the closest stand-in.
@@ -212,7 +205,7 @@ test.describe('Mini player on browse', () => {
     await expect(popup.locator('#toggle-miniplayer')).not.toBeChecked();
     expect((await extension.storageIn(popup)).byte_miniplayer).toBe(false);
 
-    await search(page, 'lofi hip hop');
+    await yt.search(page, 'lofi hip hop');
     await expectOnResults(page, 'lofi hip hop');
     await yt.expectVideoStopped(page, before);
   });
@@ -222,8 +215,7 @@ test('video opened from a search list: never goes through Home', async ({ page }
   // YouTube's mini player returns to the page the video was opened from. Only
   // a watch page opened directly (new tab, reload, link) falls back to Home.
   await yt.gotoSearch(page, 'big buck bunny');
-  await page.locator('ytd-search a#video-title[href^="/watch"], ytd-search yt-lockup-view-model a[href^="/watch"]')
-    .filter({ visible: true }).first().click();
+  await page.locator(yt.SEL.searchResultVideoLink).filter({ visible: true }).first().click();
   await page.waitForURL(/\/watch/);
   await yt.waitForVideoPlaying(page);
   const before = await yt.playerVideo(page);
@@ -237,7 +229,7 @@ test('video opened from a search list: never goes through Home', async ({ page }
     }, 20);
   });
 
-  await search(page, 'lofi hip hop');
+  await yt.search(page, 'lofi hip hop');
   await expectOnResults(page, 'lofi hip hop');
   await expectMiniplayerPlaying(page, before);
   const urls = await page.evaluate(() => window.__urls);
@@ -267,7 +259,7 @@ test('setting stored as off: search from /watch stops the video like before', as
   await extension.setStorage({ byte_miniplayer: false });
   await yt.gotoWatch(page);
   const before = await yt.playerVideo(page);
-  await search(page, 'lofi hip hop');
+  await yt.search(page, 'lofi hip hop');
   await expectOnResults(page, 'lofi hip hop');
   await yt.expectVideoStopped(page, before);
 });
@@ -276,7 +268,7 @@ test('works with Block Shorts off (independent switches)', async ({ page, extens
   await extension.setStorage({ byte_enabled: false });
   await yt.gotoWatch(page);
   const before = await yt.playerVideo(page);
-  await search(page, 'lofi hip hop');
+  await yt.search(page, 'lofi hip hop');
   await expectOnResults(page, 'lofi hip hop');
   await expectMiniplayerPlaying(page, before);
 });

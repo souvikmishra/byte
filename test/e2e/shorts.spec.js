@@ -38,7 +38,7 @@ test.describe('Shorts hidden', () => {
 
   test('home: the Shorts sidebar entry is hidden', async ({ page }) => {
     await yt.gotoYouTube(page, '/');
-    await expect(page.locator('ytd-guide-entry-renderer').nth(2)).toBeVisible();
+    await expect(page.locator(yt.SEL.guideEntry).nth(2)).toBeVisible();
     await expect(page.locator(yt.SEL.guideShortsEntry).first()).toBeAttached();
     await expect(page.locator(yt.SEL.guideShortsEntry).first()).toBeHidden();
   });

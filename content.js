@@ -16,15 +16,14 @@
   const DURATION_ATTR   = 'data-byte-dur';
   const GHOST_CLONE     = 'byte-ghost-clone';
   const GHOST_HIDDEN    = Core.GHOST_HIDDEN;
-  const GRID_MIN        = Core.GRID_MIN;
   const STORAGE         = Core.STORAGE;
 
   // ── State ─────────────────────────────────────────────
 
-  let isEnabled        = true;
-  let gridColumns      = GRID_MIN;
-  let hideThumbsEnabled = false;
-  let hidePromosEnabled = true;
+  let settings         = Core.readSettings({});
+  let comparing        = false; // set by the popup's compare hold (Task 4)
+  let highlight        = null;  // feature id the popup is hovering, or null
+  let state            = Core.effectiveState(settings, { comparing });
   let sessionBlocked   = 0;
   let observer         = null;
   let insightHTML      = '';
@@ -49,7 +48,7 @@
   }
 
   function countNewElements() {
-    if (!isEnabled) return;
+    if (!state.hideShorts) return;
     let newCount = 0;
     for (const sel of SELECTORS) {
       try {
@@ -87,6 +86,11 @@
 
   // ── Grid density ──────────────────────────────────────
 
+  function removeGridStyle() {
+    const el = document.getElementById(GRID_STYLE_ID);
+    if (el) el.remove();
+  }
+
   function applyGridStyle(n) {
     let el = document.getElementById(GRID_STYLE_ID);
     if (!el) {
@@ -94,16 +98,19 @@
       el.id = GRID_STYLE_ID;
       (document.head || document.documentElement).appendChild(el);
     }
-    el.textContent = Core.buildGridCSS(n);
+    const css = Core.buildGridCSS(n);
+    if (el.textContent !== css) el.textContent = css;
   }
 
   // YouTube stamps skeleton rows at its own row size; keep its row count but use ours.
   function syncGhostCards() {
+    const columns = state.gridColumns;
     document.querySelectorAll('ytd-rich-grid-renderer ytd-ghost-grid-renderer:not([is-shorts]) .ghost-grid').forEach(grid => {
       const cards  = grid.querySelectorAll(`.ghost-card:not(.${GHOST_CLONE})`);
       const clones = grid.querySelectorAll(`.${GHOST_CLONE}`);
       const perRow = Number(grid.closest('ytd-ghost-grid-renderer').getAttribute('items-per-row')) || cards.length || 1;
-      const target = Math.ceil(cards.length / perRow) * gridColumns;
+      // Grid off: no target, so every skeleton card is back and clones go.
+      const target = columns === null ? cards.length : Math.ceil(cards.length / perRow) * columns;
       const extra  = Math.max(0, target - cards.length);
       cards.forEach((card, i) => card.classList.toggle(GHOST_HIDDEN, i >= target));
       for (let i = clones.length; i < extra; i++) {
@@ -125,7 +132,8 @@
         el.id = THUMB_STYLE_ID;
         (document.head || document.documentElement).appendChild(el);
       }
-      el.textContent = `a.ytLockupViewModelContentImage { display: none !important; }`;
+      const css = 'a.ytLockupViewModelContentImage { display: none !important; }';
+      if (el.textContent !== css) el.textContent = css;
       injectDurations();
     } else {
       if (el) el.remove();
@@ -266,7 +274,7 @@
     const map = new Map();
     document.querySelectorAll('ytd-rich-item-renderer').forEach(card => {
       if (card.querySelector('ytm-shorts-lockup-view-model')) return;
-      if (hidePromosEnabled && card.closest(PROMO_SELECTORS)) return;
+      if (state.hidePromos && card.closest(PROMO_SELECTORS)) return;
       const channelLink = card.querySelector('a[href^="/@"]');
       if (!channelLink) return;
       const href = channelLink.getAttribute('href').split('?')[0];
@@ -337,9 +345,9 @@
     if (observer) return;
     const tick = debounce(() => {
       countNewElements();
-      updateInsightBar();
+      if (state.channelBar) updateInsightBar();
       syncGhostCards();
-      if (hideThumbsEnabled) injectDurations();
+      if (state.hideThumbs) injectDurations();
     }, 120);
     observer = new MutationObserver(tick);
     observer.observe(document.documentElement, { childList: true, subtree: true });
@@ -631,83 +639,69 @@
 
   // ── Lifecycle ─────────────────────────────────────────
 
-  function enable() {
-    injectCSS();
-    applyGridStyle(gridColumns);
-    injectInsightCSS();
-    countNewElements();
-    applyPromoStyle(hidePromosEnabled);
-    updateInsightBar();
-    applyThumbStyle(hideThumbsEnabled);
-    startObserver();
+  // Applies everything from the effective state. Every step is idempotent, so
+  // this is cheap to call on storage changes and on each navigation.
+  function applyAll() {
+    state = Core.effectiveState(settings, { comparing });
+    miniplayerEnabled = state.miniplayer;
+
+    if (state.hideShorts) injectCSS(); else removeCSS();
+    applyPromoStyle(state.hidePromos);
+    if (state.gridColumns === null) removeGridStyle(); else applyGridStyle(state.gridColumns);
+    applyThumbStyle(state.hideThumbs);
+
+    if (state.channelBar) {
+      injectInsightCSS();
+      updateInsightBar();
+    } else {
+      removeInsightBar();
+    }
+
+    const visualOn = state.hideShorts || state.hidePromos || state.hideThumbs
+      || state.channelBar || state.gridColumns !== null;
+    if (visualOn) {
+      startObserver();
+      countNewElements();
+      syncGhostCards();
+    } else {
+      stopObserver();
+      syncGhostCards(); // restores skeleton cards
+    }
   }
 
-  function disable() {
-    removeCSS();
-    stopObserver();
-    applyThumbStyle(false);
-    applyPromoStyle(false);
+  function removeInsightBar() {
     const bar = document.getElementById(INSIGHT_BAR_ID);
     if (bar) bar.remove();
+    insightHTML = '';
   }
 
-  function init() {
-    chrome.storage.local.get([STORAGE.HIDE_SHORTS, STORAGE.GRID, STORAGE.HIDE_THUMBS, STORAGE.HIDE_PROMOS, STORAGE.MINIPLAYER], data => {
-      const settings    = Core.readSettings(data);
-      isEnabled         = settings.hideShorts;
-      gridColumns       = settings.gridColumns;
-      hideThumbsEnabled = settings.hideThumbs;
-      hidePromosEnabled = settings.hidePromos;
-      miniplayerEnabled = settings.miniplayer;
-      if (isEnabled) enable();
+  function readAndApply() {
+    chrome.storage.local.get(null, data => {
+      settings = Core.readSettings(data);
+      applyAll();
     });
   }
 
+  function init() {
+    readAndApply();
+  }
+
+  // byte_count changes on every count, so it must not trigger a re-apply.
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    if (Object.keys(changes).some(k => k !== STORAGE.COUNT && k.startsWith('byte_'))) readAndApply();
+  });
+
   // ── YouTube SPA navigation ────────────────────────────
 
-  document.addEventListener('yt-navigate-finish', () => {
-    if (!isEnabled) return;
-    injectCSS();
-    applyGridStyle(gridColumns);
-    countNewElements();
-    updateInsightBar();
-    if (hideThumbsEnabled) injectDurations();
-  });
+  document.addEventListener('yt-navigate-finish', applyAll);
 
   // ── Messages from popup ───────────────────────────────
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === 'GET_STATUS') {
-      sendResponse({ sessionBlocked, isEnabled });
+      sendResponse({ sessionBlocked });
       return;
-    }
-    if (msg.type === 'SET_SETTINGS') {
-      isEnabled = msg.enabled;
-      isEnabled ? enable() : disable();
-      sendResponse({ ok: true });
-    }
-    if (msg.type === 'SET_GRID') {
-      gridColumns = msg.columns;
-      applyGridStyle(gridColumns);
-      syncGhostCards();
-      sendResponse({ ok: true });
-    }
-    if (msg.type === 'SET_THUMB') {
-      hideThumbsEnabled = msg.enabled;
-      applyThumbStyle(hideThumbsEnabled);
-      sendResponse({ ok: true });
-    }
-    if (msg.type === 'SET_PROMOS') {
-      hidePromosEnabled = msg.enabled;
-      if (isEnabled) {
-        applyPromoStyle(hidePromosEnabled);
-        updateInsightBar();
-      }
-      sendResponse({ ok: true });
-    }
-    if (msg.type === 'SET_MINIPLAYER') {
-      miniplayerEnabled = msg.enabled;
-      sendResponse({ ok: true });
     }
   });
 

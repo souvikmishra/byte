@@ -87,3 +87,14 @@ test.describe('Shorts hidden', () => {
     await expect(page.locator(yt.SEL.shortsShelf).first()).toBeVisible();
   });
 });
+
+test('pause: Shorts come back, and stay back after navigating and reloading', async ({ page, extension }) => {
+  await extension.setStorage({ byte_paused: true });
+  await yt.gotoSearch(page, SEARCH_WITH_SHORTS);
+  await expect.poll(() => yt.visibleShortsLinkCount(page)).toBeGreaterThan(0);
+  await expect(page.locator('style#byte-grid-style')).not.toBeAttached();
+  await yt.gotoSearch(page, 'dog');                    // in-app navigation
+  await expect.poll(() => yt.visibleShortsLinkCount(page)).toBeGreaterThan(0);
+  await page.reload();
+  await expect.poll(() => yt.visibleShortsLinkCount(page)).toBeGreaterThan(0);
+});

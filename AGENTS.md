@@ -13,7 +13,7 @@ A Chrome + Firefox (MV3) extension that cleans up YouTube: it hides Shorts, sets
 - `test/unit/`, `test/e2e/`, `package.json`, `playwright.config.js`, `web-ext-config.cjs`: dev-only tooling.
 
 ## How features are wired (follow this pattern)
-- Each setting has a `byte_*` key in `chrome.storage.local`, a default in `background.js` (install), a read in `content.js` `init()`, a `SET_*` message handled in `content.js`, and a toggle row in `popup/popup.html` + a handler in `popup/popup.js`.
+- Each setting has a `byte_*` key in `chrome.storage.local`, an install default in `background.js`, a field in `Core.readSettings`/`Core.effectiveState`, and is applied in `content.js` `applyAll()`, which re-runs on `storage.onChanged` (and on `yt-navigate-finish`). The popup control only writes storage; there are no `SET_*` messages.
 - Visual changes go in a `<style id="byte-…">` that is added or removed (see `applyPromoStyle`). Prefer CSS over changing the DOM.
 - One debounced `MutationObserver` (120ms) runs `countNewElements`, `updateInsightBar`, `syncGhostCards` and `injectDurations`. Anything that writes to the DOM from the observer **must skip writes that change nothing**, or it re-triggers itself (see the `insightHTML` check).
 - YouTube is a single-page app: handle `yt-navigate-finish`, not page loads.

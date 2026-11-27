@@ -6,7 +6,6 @@ const togglePromos  = document.getElementById('toggle-promos');
 const toggleMiniplayer = document.getElementById('toggle-miniplayer');
 const sessionCountEl = document.getElementById('session-count');
 const totalCountEl   = document.getElementById('total-count');
-const badge          = document.getElementById('status-badge');
 const gridCountEl    = document.getElementById('grid-count');
 const gridDec        = document.getElementById('grid-dec');
 const gridInc        = document.getElementById('grid-inc');
@@ -15,11 +14,6 @@ const GRID_MIN = 3;
 
 function fmt(n) {
   return typeof n === 'number' ? n.toLocaleString() : '—';
-}
-
-function applyStatus(enabled) {
-  badge.textContent = enabled ? 'ON' : 'OFF';
-  badge.className = `badge ${enabled ? 'active' : 'paused'}`;
 }
 
 function renderStepper(n) {
@@ -43,7 +37,6 @@ chrome.storage.local.get(
     togglePromos.checked  = promos;
     toggleMiniplayer.checked = miniplayer;
     totalCountEl.textContent = fmt(data.byte_count || 0);
-    applyStatus(enabled);
     renderStepper(cols);
   }
 );
@@ -66,10 +59,6 @@ chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
 toggleEnabled.addEventListener('change', () => {
   const enabled = toggleEnabled.checked;
   chrome.storage.local.set({ byte_hide_shorts: enabled });
-  applyStatus(enabled);
-  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-    if (tab) chrome.tabs.sendMessage(tab.id, { type: 'SET_SETTINGS', enabled });
-  });
 });
 
 // ── Hide thumbnails toggle ────────────────────────────
@@ -77,9 +66,6 @@ toggleEnabled.addEventListener('change', () => {
 toggleThumbs.addEventListener('change', () => {
   const enabled = toggleThumbs.checked;
   chrome.storage.local.set({ byte_hide_thumbs: enabled });
-  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-    if (tab) chrome.tabs.sendMessage(tab.id, { type: 'SET_THUMB', enabled });
-  });
 });
 
 // ── Hide promo sections toggle ────────────────────────
@@ -87,9 +73,6 @@ toggleThumbs.addEventListener('change', () => {
 togglePromos.addEventListener('change', () => {
   const enabled = togglePromos.checked;
   chrome.storage.local.set({ byte_hide_promos: enabled });
-  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-    if (tab) chrome.tabs.sendMessage(tab.id, { type: 'SET_PROMOS', enabled });
-  });
 });
 
 // ── Mini player on browse toggle ──────────────────────
@@ -97,9 +80,6 @@ togglePromos.addEventListener('change', () => {
 toggleMiniplayer.addEventListener('change', () => {
   const enabled = toggleMiniplayer.checked;
   chrome.storage.local.set({ byte_miniplayer: enabled });
-  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-    if (tab) chrome.tabs.sendMessage(tab.id, { type: 'SET_MINIPLAYER', enabled });
-  });
 });
 
 // ── Grid column stepper ───────────────────────────────
@@ -107,9 +87,6 @@ toggleMiniplayer.addEventListener('change', () => {
 function setGridColumns(n) {
   renderStepper(n);
   chrome.storage.local.set({ byte_grid_columns: n });
-  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-    if (tab) chrome.tabs.sendMessage(tab.id, { type: 'SET_GRID', columns: n });
-  });
 }
 
 gridDec.addEventListener('click', () => {

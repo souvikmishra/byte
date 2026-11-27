@@ -21,7 +21,6 @@ test.describe('Popup', () => {
     await expect(page.locator('#toggle-promos')).toBeChecked();
     await expect(page.locator('#grid-count')).toHaveText('3');
     await expect(page.locator('#grid-dec')).toBeDisabled();
-    await expect(page.locator('#status-badge')).toHaveText('ON');
   });
 
   test('Block Shorts toggle applies to the open tab without a reload', async ({ page, extension }) => {
@@ -32,12 +31,10 @@ test.describe('Popup', () => {
 
     const popup = await extension.openPopup(page);
     await toggle(popup, 'toggle-enabled').click();
-    await expect(popup.locator('#status-badge')).toHaveText('OFF');
     await expect.poll(() => yt.visibleShortsLinkCount(page)).toBeGreaterThan(0);
     expect((await extension.storageIn(popup)).byte_hide_shorts).toBe(false);
 
     await toggle(popup, 'toggle-enabled').click();
-    await expect(popup.locator('#status-badge')).toHaveText('ON');
     await expect.poll(() => yt.visibleShortsLinkCount(page)).toBe(0);
     expect((await extension.storageIn(popup)).byte_hide_shorts).toBe(true);
     await assertNoReload();

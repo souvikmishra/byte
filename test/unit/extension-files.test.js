@@ -106,13 +106,20 @@ test('content.js starts with lib/core.js loaded and reads settings from storage'
     addEventListener: () => {},
   };
   const chrome = {
-    storage: { local: { get: (keys, cb) => { getKeys = keys; cb({}); }, set: () => {} } },
+    storage: { local: { get: (keys, cb) => { getKeys = keys; cb({}); }, set: () => {} }, onChanged: { addListener: () => {} } },
     runtime: { onMessage: { addListener: () => {} } },
   };
   class MutationObserver { observe() {} disconnect() {} }
   const ctx = vm.createContext({ document, chrome, MutationObserver, setTimeout, clearTimeout });
   ctx.globalThis = ctx;
   for (const f of manifest.content_scripts[0].js) vm.runInContext(read(f), ctx, { filename: f });
-  assert.ok(getKeys === null || getKeys.includes(Core.STORAGE.HIDE_SHORTS));
+  assert.equal(getKeys, null, 'reads all keys so applyAll sees every setting');
   assert.ok(appended.includes('byte-style'), 'Shorts CSS injected with default settings');
+});
+
+test('content.js reacts to storage changes, not popup SET_* messages', () => {
+  const src = read('content.js');
+  assert.match(src, /storage\.onChanged\.addListener/);
+  assert.doesNotMatch(src, /SET_[A-Z]+/);
+  assert.doesNotMatch(read('popup/popup.js'), /SET_[A-Z]+/);
 });

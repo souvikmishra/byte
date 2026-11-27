@@ -10,6 +10,7 @@
   const GRID_STYLE_ID   = 'byte-grid-style';
   const THUMB_STYLE_ID  = 'byte-thumb-style';
   const PROMO_STYLE_ID  = 'byte-promo-style';
+  const HIGHLIGHT_STYLE_ID = 'byte-highlight';
   const INSIGHT_CSS_ID  = 'byte-insight-css';
   const INSIGHT_BAR_ID  = 'byte-insight';
   const PROCESSED_ATTR  = 'data-byte-seen';
@@ -652,6 +653,22 @@
 
   // ── Lifecycle ─────────────────────────────────────────
 
+  // Outline for the feature the popup is hovering. Rewrites only on change.
+  function applyHighlight() {
+    const css = highlight ? Core.buildHighlightCSS(highlight, Core.paletteFor(settings.accent).accent) : '';
+    let el = document.getElementById(HIGHLIGHT_STYLE_ID);
+    if (!css) {
+      if (el) el.remove();
+      return;
+    }
+    if (!el) {
+      el = document.createElement('style');
+      el.id = HIGHLIGHT_STYLE_ID;
+      (document.head || document.documentElement).appendChild(el);
+    }
+    if (el.textContent !== css) el.textContent = css;
+  }
+
   // Applies everything from the effective state. Every step is idempotent, so
   // this is cheap to call on storage changes and on each navigation.
   function applyAll() {
@@ -662,6 +679,7 @@
     applyPromoStyle(state.hidePromos);
     if (state.gridColumns === null) removeGridStyle(); else applyGridStyle(state.gridColumns);
     applyThumbStyle(state.hideThumbs);
+    applyHighlight();
 
     if (state.channelBar) {
       injectInsightCSS();
@@ -718,6 +736,23 @@
       sendResponse({ sessionBlocked, page, channelCounts });
       return;
     }
+  });
+
+  // The popup holds a port open while it is showing. Hold-to-compare and hover
+  // outlines last only as long as the port; any disconnect resets them.
+  chrome.runtime.onConnect.addListener(port => {
+    if (port.name !== 'byte-popup') return;
+    port.onMessage.addListener(msg => {
+      if (msg.type === 'COMPARE') comparing = msg.on === true;
+      else if (msg.type === 'HIGHLIGHT') highlight = typeof msg.feature === 'string' ? msg.feature : null;
+      else return;
+      applyAll();
+    });
+    port.onDisconnect.addListener(() => {
+      comparing = false;
+      highlight = null;
+      applyAll();
+    });
   });
 
   init();

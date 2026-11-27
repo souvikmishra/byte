@@ -107,7 +107,7 @@ test('content.js starts with lib/core.js loaded and reads settings from storage'
   };
   const chrome = {
     storage: { local: { get: (keys, cb) => { getKeys = keys; cb({}); }, set: () => {} }, onChanged: { addListener: () => {} } },
-    runtime: { onMessage: { addListener: () => {} } },
+    runtime: { onMessage: { addListener: () => {} }, onConnect: { addListener: () => {} } },
   };
   class MutationObserver { observe() {} disconnect() {} }
   const ctx = vm.createContext({ document, chrome, MutationObserver, setTimeout, clearTimeout });

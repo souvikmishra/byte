@@ -180,3 +180,18 @@ test('loopStat: one channel can be the whole loop', () => assert.equal(Core.loop
 test('loopStat: all equal → half of them, rounded up', () => assert.equal(Core.loopStat([1, 1, 1, 1, 1]).loopCount, 3));
 test('loopStat: unsorted input', () => assert.equal(Core.loopStat([2, 30, 1]).loopCount, 1));
 test('loopStat: empty feed', () => assert.equal(Core.loopStat([]), null));
+
+test('FEATURES lists the six features in popup order', () => {
+  assert.deepEqual(Core.FEATURES.map(f => f.id),
+    ['shorts', 'grid', 'promos', 'thumbs', 'miniplayer', 'channelBar']);
+  assert.ok(Core.FEATURES.every(f => f.label && f.caption));
+});
+
+test('buildHighlightCSS outlines the feature and never hides anything', () => {
+  const css = Core.buildHighlightCSS('thumbs', '#C6F135');
+  assert.ok(css.includes('a.ytLockupViewModelContentImage'));
+  assert.ok(css.includes('2px dashed #C6F135'));
+  assert.ok(!css.includes('display'));
+  assert.equal(Core.buildHighlightCSS('miniplayer', '#C6F135'), '');
+  assert.equal(Core.buildHighlightCSS('nope', '#C6F135'), '');
+});

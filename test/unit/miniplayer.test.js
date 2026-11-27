@@ -34,6 +34,22 @@ test('classifyLink tolerates junk', () => {
   assert.equal(Core.classifyLink(null, BASE), 'other');
 });
 
+test('cancelsPendingAction: other same-origin pages cancel, list pages and junk do not', () => {
+  for (const href of ['/watch?v=xyz', '/watch?v=abc&t=10s', '/shorts/abc', '/live/abc', '/account',
+    'https://www.youtube.com/watch?v=xyz']) {
+    assert.equal(Core.cancelsPendingAction(href, BASE), true, href);
+  }
+  for (const href of [
+    // List pages replace the waiting action instead.
+    '/', '/results?search_query=cats', '/@BlenderOfficial', '/feed/subscriptions',
+    // Not an in-page navigation.
+    'https://music.youtube.com/', 'https://www.google.com/', 'javascript:void(0)', 'mailto:a@b.c',
+    '#comments', '', 'http://[bad', null,
+  ]) {
+    assert.equal(Core.cancelsPendingAction(href, BASE), false, JSON.stringify(href));
+  }
+});
+
 test('isWatchPath only matches /watch', () => {
   assert.equal(Core.isWatchPath('/watch'), true);
   for (const p of ['/', '/watchlater', '/shorts/x', '/results']) assert.equal(Core.isWatchPath(p), false, p);

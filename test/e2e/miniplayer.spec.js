@@ -122,6 +122,34 @@ test.describe('Mini player on browse', () => {
     await expect.poll(async () => (await yt.playerVideo(page)).id).toBe(id);
   });
 
+  test('related video picked while a search waits for the mini player: the video wins', async ({ page }) => {
+    const related = page.locator(yt.SEL.relatedVideo).filter({ visible: true }).first();
+    const id = new URL(await related.getAttribute('href'), yt.ORIGIN).searchParams.get('v');
+    // Search with Enter, then pick the video in the same task, so the click
+    // lands while the search is still waiting. Record every URL shown after.
+    await page.evaluate(({ inputSel, relatedSel }) => {
+      window.__urls = [];
+      setInterval(() => {
+        const u = location.pathname + location.search;
+        if (window.__urls[window.__urls.length - 1] !== u) window.__urls.push(u);
+      }, 20);
+      const input = document.querySelector(inputSel);
+      input.value = 'lofi hip hop';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true, cancelable: true }));
+      [...document.querySelectorAll(relatedSel)].find(a => a.checkVisibility()).click();
+    }, { inputSel: yt.SEL.searchInput, relatedSel: yt.SEL.relatedVideo });
+    await page.waitForURL(url => url.pathname === '/watch' && url.searchParams.get('v') === id);
+    await expect.poll(async () => (await yt.playerVideo(page)).id).toBe(id);
+    // The longest wait for the mini player is 2.5s + 8s; past that, a search
+    // that was still pending would have run.
+    const start = Date.now();
+    await expect.poll(() => Date.now() - start > 12_000, { timeout: 20_000, intervals: [1000] }).toBe(true);
+    const urls = await page.evaluate(() => window.__urls);
+    expect(urls.some(u => u.startsWith('/results')), `URLs shown: ${urls.join(' ')}`).toBe(false);
+    expect(new URL(page.url()).searchParams.get('v')).toBe(id);
+  });
+
   test('Cmd/Ctrl-click a channel link: opens a new tab, current tab unchanged', async ({ page, context }) => {
     const link = page.locator(yt.SEL.channelLink).filter({ visible: true }).last();
     const href = await link.getAttribute('href');

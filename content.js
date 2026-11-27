@@ -369,6 +369,7 @@
   let miniplayerEnabled = true;
   let replaying         = false;
   let pendingAction     = null; // { kind: 'search', query } | { kind: 'link', anchor, href }
+  let stopWaiting       = null; // clears the timers and listeners of the current wait
 
   function isMiniplayerActive() {
     return !!document.querySelector(MINI.active);
@@ -448,6 +449,13 @@
     }));
   }
 
+  // The user chose something else (another video): drop the waiting
+  // action so it can't replace that choice later.
+  function cancelPendingAction() {
+    if (stopWaiting) stopWaiting();
+    pendingAction = null;
+  }
+
   // Turns the mini player on (YouTube then navigates to /) and replays
   // pendingAction once the mini player is on and that navigation is done.
   function moveToMiniplayerThen(action) {
@@ -466,15 +474,20 @@
     let appObserver  = null;
     const app = document.querySelector('ytd-app');
 
-    const finish = () => {
-      if (done) return;
+    const stop = () => {
       done = true;
+      if (stopWaiting === stop) stopWaiting = null;
       clearTimeout(timeoutTimer);
       clearTimeout(retryTimer);
       clearTimeout(settleTimer);
       if (appObserver) appObserver.disconnect();
       document.removeEventListener('yt-navigate-start', onStart, true);
       document.removeEventListener('yt-navigate-finish', onFinish, true);
+    };
+    stopWaiting = stop;
+    const finish = () => {
+      if (done) return;
+      stop();
       const next = pendingAction;
       pendingAction = null;
       replayAction(next);
@@ -516,7 +529,7 @@
     try {
       moveToMiniplayerThen(action);
     } catch (_) {
-      pendingAction = null;
+      cancelPendingAction();
       location.href = actionUrl(action);
     }
   }
@@ -582,7 +595,12 @@
     const anchor = e.target.closest('a[href]');
     if (!anchor || Core.targetOpensNewContext(anchor.getAttribute('target'))) return;
     const href = anchor.getAttribute('href');
-    if (Core.classifyLink(href, location.href) !== 'list') return;
+    if (Core.classifyLink(href, location.href) !== 'list') {
+      // Another video etc. while an action waits: YouTube opens it, and the
+      // waiting action must not navigate away from it afterwards.
+      if (pendingAction && Core.cancelsPendingAction(href, location.href)) cancelPendingAction();
+      return;
+    }
     intercept(e, { kind: 'link', anchor, href });
   }, true);
 

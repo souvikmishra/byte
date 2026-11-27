@@ -8,6 +8,7 @@
 //                scripts and fails the test if there are any
 //
 // HEADED=1 npm run e2e  shows the browser.
+// E2E_BROWSER_PATH="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" npm run e2e  runs in Brave.
 
 const { test: base, expect, chromium } = require('@playwright/test');
 const fs = require('node:fs');
@@ -30,7 +31,11 @@ const test = base.extend({
     const context = await chromium.launchPersistentContext(userDataDir, {
       // The "chromium" channel uses new headless, which supports extensions.
       // Branded Chrome ignores --load-extension, so don't use channel "chrome".
-      channel: 'chromium',
+      // E2E_BROWSER_PATH runs against an installed Chromium-based browser
+      // instead, e.g. Brave (which still honors --load-extension).
+      ...(process.env.E2E_BROWSER_PATH
+        ? { executablePath: process.env.E2E_BROWSER_PATH }
+        : { channel: 'chromium' }),
       headless: !process.env.HEADED,
       args: [
         `--disable-extensions-except=${EXT_DIR}`,

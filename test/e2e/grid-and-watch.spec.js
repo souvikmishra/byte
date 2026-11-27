@@ -21,3 +21,19 @@ test.describe('Watch page', () => {
     expect(s.paused).toBe(false);
   });
 });
+
+test.describe('Channel bar', () => {
+  test('channel bar: loop chip in the accent, switch removes it', async ({ page, extension }) => {
+    await yt.gotoYouTube(page, yt.CHANNEL_GRID_PAGE);
+    await expect(page.locator('#byte-insight .byte-chip-loop').first()).toBeAttached({ timeout: 30_000 });
+
+    await extension.setStorage({ byte_channel_bar: false });
+    await yt.gotoYouTube(page, yt.CHANNEL_GRID_PAGE);
+    await expect(page.locator('ytd-rich-grid-renderer #contents').first()).toBeAttached();
+    await expect(page.locator('#byte-insight')).not.toBeAttached();
+
+    await extension.setStorage({ byte_channel_bar: true });
+    await yt.gotoYouTube(page, yt.CHANNEL_GRID_PAGE);
+    await expect(page.locator('#byte-insight')).toBeAttached({ timeout: 30_000 });
+  });
+});

@@ -524,7 +524,24 @@
     if (el && el.matches && el.matches(MINI.searchInput)) el.blur();
   }
 
+  // Picks a suggestion from the search dropdown. YouTube searches on press
+  // (pointerdown/mousedown), before any click, so this runs for all three;
+  // repeats for the same press just replace the pending action.
+  function onSuggestionPress(e) {
+    if (!Core.isPlainLeftClick(e) || !(e.target instanceof Element)) return false;
+    const suggestion = e.target.closest(MINI.searchSuggestion);
+    if (!suggestion || !shouldIntercept()) return false;
+    const query = (suggestion.getAttribute('aria-label') || suggestion.textContent || '').trim();
+    if (!query) return false;
+    blurSearch();
+    intercept(e, { kind: 'search', query });
+    return true;
+  }
+
   // Capture phase on document runs before YouTube's own handlers.
+  document.addEventListener('pointerdown', onSuggestionPress, true);
+  document.addEventListener('mousedown', onSuggestionPress, true);
+
   document.addEventListener('click', e => {
     if (!Core.isPlainLeftClick(e) || !(e.target instanceof Element)) return;
     if (!shouldIntercept()) return;
@@ -536,6 +553,8 @@
       intercept(e, { kind: 'search', query });
       return;
     }
+
+    if (onSuggestionPress(e)) return;
 
     const anchor = e.target.closest('a[href]');
     if (!anchor || Core.targetOpensNewContext(anchor.getAttribute('target'))) return;

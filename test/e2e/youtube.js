@@ -14,6 +14,7 @@ const SEL = {
   // yt-searchbox also contains a hidden <input type=file> for image search.
   searchInput: 'yt-searchbox input[name="search_query"], ytd-searchbox input#search',
   searchButton: 'yt-searchbox button.ytSearchboxComponentSearchButton, ytd-searchbox button#search-icon-legacy',
+  searchSuggestion: 'yt-searchbox [role="listbox"] [role="option"], ytd-searchbox [role="listbox"] [role="option"]',
   searchResult: 'ytd-search ytd-video-renderer, ytd-search yt-lockup-view-model',
   shortsLockup: 'ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2',
   // Search shelves with a "Shorts" header; the same tag can hold other content.

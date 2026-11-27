@@ -42,6 +42,17 @@ test.describe('Mini player on browse', () => {
     await expectMiniplayerPlaying(page, before);
   });
 
+  test('clicking a search suggestion: same as Enter', async ({ page }) => {
+    // Typed for real so YouTube opens its suggestion dropdown.
+    await page.locator(yt.SEL.searchInput).first().click();
+    await page.keyboard.type('never gonna give', { delay: 40 });
+    const option = page.locator(yt.SEL.searchSuggestion).filter({ visible: true }).first();
+    const query = await option.getAttribute('aria-label');
+    await option.click();
+    await expectOnResults(page, query);
+    await expectMiniplayerPlaying(page, before);
+  });
+
   test('channel name under the video: channel page with the mini player playing', async ({ page }) => {
     const link = page.locator(yt.SEL.channelLink).filter({ visible: true }).last();
     const href = await link.getAttribute('href');

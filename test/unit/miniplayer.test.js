@@ -81,7 +81,7 @@ test('mini player setting defaults to on and only an explicit false turns it off
 test('mini player selectors: one named list with the parts the feature needs', () => {
   const S = Core.MINIPLAYER_SELECTORS;
   assert.ok(Object.isFrozen(S));
-  for (const k of ['active', 'player', 'adShowing', 'button', 'searchbox', 'searchInput', 'searchButton']) {
+  for (const k of ['active', 'player', 'adShowing', 'button', 'searchbox', 'searchInput', 'searchButton', 'searchSuggestion']) {
     assert.equal(typeof S[k], 'string', k);
     assert.ok(S[k].length > 0, k);
   }

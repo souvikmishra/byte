@@ -46,8 +46,21 @@ async function handleConsent(page) {
   }
 }
 
+// Google answers too many automated requests from one network with an
+// "unusual traffic" CAPTCHA page instead of YouTube. Fail clearly: nothing in
+// the extension is wrong, and retrying right away makes it worse.
+async function failIfRateLimited(page) {
+  const blocked = /\/sorry\//.test(page.url()) ||
+    await page.getByText(/unusual traffic from your computer network/i).count() > 0;
+  if (blocked) {
+    throw new Error('Google is rate-limiting this network ("unusual traffic" CAPTCHA). ' +
+      'Not an extension bug: stop running e2e for 30-60 minutes, then retry.');
+  }
+}
+
 async function gotoYouTube(page, pathAndQuery) {
   await page.goto(ORIGIN + pathAndQuery, { waitUntil: 'domcontentloaded' });
+  await failIfRateLimited(page);
   await handleConsent(page);
   await expect(page.locator(SEL.app)).toBeAttached();
 }
@@ -147,7 +160,7 @@ async function gotoWatch(page, videoId = TEST_VIDEO_ID) {
 
 module.exports = {
   ORIGIN, TEST_VIDEO_ID, SEL,
-  handleConsent, gotoYouTube, gotoSearch, gotoWatch,
+  handleConsent, failIfRateLimited, gotoYouTube, gotoSearch, gotoWatch,
   visibleShortsLinkCount, gridItemsPerRow, playerState, waitForVideoPlaying,
   playerVideo, expectStillPlaying, expectVideoStopped, miniplayerActive,
 };

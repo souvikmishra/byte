@@ -136,25 +136,42 @@ async function waitForVideoPlaying(page, { timeout = 90_000 } = {}) {
 
 // The player's current video id and time, read through YouTube's player API
 // on #movie_player (main world). Works for the mini player too: it's the same element.
+// `restarts` counts how often the player's time jumped back (by over 0.25s;
+// a restart, or a new <video> starting at 0) since the first call on this page.
+// Media events don't bubble, so the listener runs in the capture phase.
 async function playerVideo(page) {
   return page.evaluate(() => {
     const p = document.querySelector('#movie_player');
     const v = p && p.querySelector('video');
+    if (!window.__byteRestartWatch) {
+      const w = window.__byteRestartWatch = { restarts: 0, last: v ? v.currentTime : null };
+      document.addEventListener('timeupdate', e => {
+        const t = e.target;
+        if (!(t instanceof HTMLVideoElement) || !t.closest('#movie_player')) return;
+        if (w.last !== null && t.currentTime < w.last - 0.25) w.restarts++;
+        w.last = t.currentTime;
+      }, true);
+    }
     return {
       id: p && typeof p.getVideoData === 'function' ? p.getVideoData().video_id : null,
       time: v ? v.currentTime : null,
       paused: v ? v.paused : null,
       hasSrc: !!(v && v.src),
+      restarts: window.__byteRestartWatch.restarts,
     };
   });
 }
 
 // Asserts the same video keeps playing: time moves forward and never resets.
+// A restart could climb back past `before.time` before the first poll, so
+// jumps back are counted as they happen (see playerVideo) and must stay at 0.
 async function expectStillPlaying(page, before) {
+  let now;
   await expect.poll(async () => {
-    const now = await playerVideo(page);
+    now = await playerVideo(page);
     return now.id === before.id && now.paused === false && now.time > before.time + 0.5;
   }, { timeout: 15_000, message: `video ${before.id} still playing past ${before.time.toFixed(1)}s` }).toBe(true);
+  expect(now.restarts - before.restarts, `video ${before.id} restarted (time jumped back)`).toBe(0);
 }
 
 // Starts recording every URL the tab shows (path + query), starting with the

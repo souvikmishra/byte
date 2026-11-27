@@ -215,6 +215,14 @@
       transition: opacity 120ms ease;
     }
     .byte-chip:hover { opacity: 1; }
+    .byte-chip-loop {
+      opacity: 1;
+      padding: 2px 8px 2px 2px;
+      border-radius: 999px;
+      background: var(--byte-accent);
+      color: var(--byte-on-accent);
+    }
+    .byte-chip-loop .byte-chip-count { color: var(--byte-on-accent); }
     .byte-chip img,
     .byte-chip-avatar-ph {
       width: 26px;
@@ -291,8 +299,7 @@
     // Only show on pages that have the rich grid (homepage, subscriptions).
     const contentsEl = document.querySelector('ytd-rich-grid-renderer #contents');
     if (!contentsEl) {
-      const existing = document.getElementById(INSIGHT_BAR_ID);
-      if (existing) existing.remove();
+      removeInsightBar();
       return;
     }
 
@@ -306,15 +313,17 @@
 
     const channels = collectChannelData();
     const total = channels.reduce((sum, ch) => sum + ch.count, 0);
+    const loop = Core.loopStat(channels.map(ch => ch.count));
+    const palette = Core.paletteFor(settings.accent);
 
     let html = '';
     if (total > 0) {
-      const chipsHTML = channels.map(ch => {
+      const chipsHTML = channels.map((ch, i) => {
         const label = escapeAttr(`${ch.name} · ${ch.count} video${ch.count !== 1 ? 's' : ''}`);
         const avatar = ch.avatarSrc
           ? `<img src="${escapeAttr(ch.avatarSrc)}" alt="${escapeAttr(ch.name)}">`
           : `<div class="byte-chip-avatar-ph">${escapeAttr((ch.name[0] || '?').toUpperCase())}</div>`;
-        return `<a href="${escapeAttr(ch.href)}" class="byte-chip" data-byte-tip="${label}">${avatar}<span class="byte-chip-count">${ch.count}</span></a>`;
+        return `<a href="${escapeAttr(ch.href)}" class="byte-chip${loop && i < loop.loopCount ? ' byte-chip-loop' : ''}" data-byte-tip="${label}">${avatar}<span class="byte-chip-count">${ch.count}</span></a>`;
       }).join('');
 
       html = `
@@ -329,8 +338,12 @@
 
     // Writing the bar re-triggers our own MutationObserver. Skip no-op writes or
     // it rebuilds every tick and keeps resetting YouTube's hover previews.
-    if (html === insightHTML) return;
-    insightHTML = html;
+    // The accent is part of the cache key so a colour change re-renders.
+    const key = `${palette.id}|${html}`;
+    if (key === insightHTML) return;
+    insightHTML = key;
+    bar.style.setProperty('--byte-accent', palette.accent);
+    bar.style.setProperty('--byte-on-accent', palette.onAccent);
     bar.innerHTML = html;
   }
 
@@ -700,7 +713,9 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === 'GET_STATUS') {
-      sendResponse({ sessionBlocked });
+      const page = location.pathname === '/' ? 'home' : 'other';
+      const channelCounts = page === 'home' ? collectChannelData().map(ch => ch.count) : [];
+      sendResponse({ sessionBlocked, page, channelCounts });
       return;
     }
   });

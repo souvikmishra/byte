@@ -172,3 +172,11 @@ test('escapeAttr escapes HTML-significant characters', () => {
   assert.equal(Core.escapeAttr('&amp;'), '&amp;amp;', 'escapes & first, no double-decoding');
   assert.equal(Core.escapeAttr(42), '42');
 });
+
+test('loopStat: fewest channels that fill half', () => {
+  assert.deepEqual(Core.loopStat([10, 9, 6, 5, 5, 5, 4, 2, 2]), { loopCount: 3, share: 25 / 48, total: 48 });
+});
+test('loopStat: one channel can be the whole loop', () => assert.equal(Core.loopStat([30, 2, 1]).loopCount, 1));
+test('loopStat: all equal → half of them, rounded up', () => assert.equal(Core.loopStat([1, 1, 1, 1, 1]).loopCount, 3));
+test('loopStat: unsorted input', () => assert.equal(Core.loopStat([2, 30, 1]).loopCount, 1));
+test('loopStat: empty feed', () => assert.equal(Core.loopStat([]), null));

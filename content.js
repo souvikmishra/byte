@@ -534,11 +534,27 @@
   // Picks a suggestion from the search dropdown. YouTube searches on press
   // (pointerdown/mousedown), before any click, so this runs for all three;
   // repeats for the same press just replace the pending action.
+  // The row a press landed in: the listbox child containing the target.
+  function suggestionRow(target) {
+    const list = target.closest(MINI.searchSuggestionList);
+    if (!list) return null;
+    let row = target;
+    while (row && row.parentElement !== list) row = row.parentElement;
+    return row;
+  }
+
   function onSuggestionPress(e) {
     if (!Core.isPlainLeftClick(e) || !(e.target instanceof Element)) return false;
-    const suggestion = e.target.closest(MINI.searchSuggestion);
-    if (!suggestion || !shouldIntercept()) return false;
-    const query = (suggestion.getAttribute('aria-label') || suggestion.textContent || '').trim();
+    const row = suggestionRow(e.target);
+    if (!row) return false;
+    const option = row.matches('[role="option"]') ? row : row.querySelector('[role="option"]');
+    if (!option) return false;
+    // Other controls in the row (e.g. "Remove" on a history entry) keep
+    // their own behavior.
+    const control = e.target.closest('button, a, [role="button"]');
+    if (control && !option.contains(control)) return false;
+    if (!shouldIntercept()) return false;
+    const query = (option.getAttribute('aria-label') || option.textContent || '').trim();
     if (!query) return false;
     blurSearch();
     intercept(e, { kind: 'search', query });

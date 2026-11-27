@@ -53,6 +53,24 @@ test.describe('Mini player on browse', () => {
     await expectMiniplayerPlaying(page, before);
   });
 
+  test('clicking the empty right side of a suggestion row: same as Enter', async ({ page }) => {
+    // The row is much wider than its text; people often click the blank part.
+    await page.locator(yt.SEL.searchInput).first().click();
+    await page.keyboard.type('never gonna give', { delay: 40 });
+    const option = page.locator(yt.SEL.searchSuggestion).filter({ visible: true }).first();
+    await expect(option).toBeVisible();
+    // Measure in one step: the dropdown re-renders while suggestions update.
+    const spot = await option.evaluate(o => {
+      const row = o.parentElement.getBoundingClientRect();
+      const text = o.getBoundingClientRect();
+      return { x: row.right - 30, y: row.top + row.height / 2, gap: row.right - text.right, query: o.getAttribute('aria-label') };
+    });
+    expect(spot.gap, 'row has blank space beside the text').toBeGreaterThan(100);
+    await page.mouse.click(spot.x, spot.y);
+    await expectOnResults(page, spot.query);
+    await expectMiniplayerPlaying(page, before);
+  });
+
   test('channel name under the video: channel page with the mini player playing', async ({ page }) => {
     const link = page.locator(yt.SEL.channelLink).filter({ visible: true }).last();
     const href = await link.getAttribute('href');

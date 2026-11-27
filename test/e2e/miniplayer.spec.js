@@ -71,6 +71,20 @@ test.describe('Mini player on browse', () => {
     await expectMiniplayerPlaying(page, before);
   });
 
+  test('keyboard only: Tab to the search button and press Enter', async ({ page }) => {
+    await page.locator(yt.SEL.searchInput).first().click();
+    await page.keyboard.type('jazz piano', { delay: 40 });
+    // Tab goes input -> "Clear search query" -> search button.
+    const searchButton = page.locator(yt.SEL.searchButton).first();
+    for (let i = 0; i < 4 && !(await searchButton.evaluate(b => b === document.activeElement)); i++) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(searchButton).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expectOnResults(page, 'jazz piano');
+    await expectMiniplayerPlaying(page, before);
+  });
+
   test('channel name under the video: channel page with the mini player playing', async ({ page }) => {
     const link = page.locator(yt.SEL.channelLink).filter({ visible: true }).last();
     const href = await link.getAttribute('href');
@@ -172,6 +186,33 @@ test.describe('Mini player on browse', () => {
     await expectOnResults(page, 'lofi hip hop');
     await yt.expectVideoStopped(page, before);
   });
+});
+
+test('video opened from a search list: never goes through Home', async ({ page }) => {
+  // YouTube's mini player returns to the page the video was opened from. Only
+  // a watch page opened directly (new tab, reload, link) falls back to Home.
+  await yt.gotoSearch(page, 'big buck bunny');
+  await page.locator('ytd-search a#video-title[href^="/watch"], ytd-search yt-lockup-view-model a[href^="/watch"]')
+    .filter({ visible: true }).first().click();
+  await page.waitForURL(/\/watch/);
+  await yt.waitForVideoPlaying(page);
+  const before = await yt.playerVideo(page);
+  // Going back to the list restores it from YouTube's cache without a
+  // navigation event, so record every URL the tab shows instead.
+  await page.evaluate(() => {
+    window.__urls = [];
+    setInterval(() => {
+      const u = location.pathname + location.search;
+      if (window.__urls[window.__urls.length - 1] !== u) window.__urls.push(u);
+    }, 20);
+  });
+
+  await search(page, 'lofi hip hop');
+  await expectOnResults(page, 'lofi hip hop');
+  await expectMiniplayerPlaying(page, before);
+  const urls = await page.evaluate(() => window.__urls);
+  expect(urls, 'URLs shown after the search').not.toContain('/');
+  expect(urls[urls.length - 1]).toBe('/results?search_query=lofi+hip+hop');
 });
 
 test('slow machine (CPU throttled 6x): picking a suggestion still keeps the mini player', async ({ page, context }) => {

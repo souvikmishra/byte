@@ -156,6 +156,23 @@ test.describe('Mini player on browse', () => {
   });
 });
 
+test('slow machine (CPU throttled 6x): picking a suggestion still keeps the mini player', async ({ page, context }) => {
+  // YouTube's detour through Home before the mini player is on can take
+  // seconds on a busy machine; the extension must wait for it.
+  await yt.gotoWatch(page);
+  const before = await yt.playerVideo(page);
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+  await page.locator(yt.SEL.searchInput).first().click();
+  await page.keyboard.type('never gonna give', { delay: 40 });
+  const option = page.locator(yt.SEL.searchSuggestion).filter({ visible: true }).first();
+  const query = await option.getAttribute('aria-label');
+  await option.click();
+  await page.waitForURL(resultsUrl(query), { timeout: 60_000 });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  await expectMiniplayerPlaying(page, before);
+});
+
 test('setting stored as off: search from /watch stops the video like before', async ({ page, extension }) => {
   // Control for the main test: proves YouTube itself doesn't keep playing.
   await extension.setStorage({ byte_miniplayer: false });

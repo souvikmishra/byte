@@ -358,7 +358,11 @@
   // errors fall back to a normal page load. Spec: docs/miniplayer-on-browse.md
 
   const MINI = Core.MINIPLAYER_SELECTORS;
-  const MINI_TIMEOUT_MS = 2500; // give up waiting and replay the action
+  const MINI_TIMEOUT_MS = 2500; // YouTube hasn't reacted at all: replay the action
+  // YouTube has started moving to the mini player (it navigates to / first,
+  // which took ~1.8s signed in). Replaying before it's on stops the video, so
+  // wait this much longer.
+  const MINI_SLOW_TIMEOUT_MS = 8000;
   const MINI_RETRY_MS   = 800;  // press again if YouTube ignored the first press
   const MINI_SETTLE_MS  = 1000; // mini player on but no navigation seen: replay
 
@@ -489,7 +493,10 @@
       appObserver = new MutationObserver(check);
       appObserver.observe(app, { attributes: true, attributeFilter: ['miniplayer-is-active'] });
     }
-    timeoutTimer = setTimeout(finish, MINI_TIMEOUT_MS);
+    timeoutTimer = setTimeout(() => {
+      if (navStarted && !done) timeoutTimer = setTimeout(finish, MINI_SLOW_TIMEOUT_MS);
+      else finish();
+    }, MINI_TIMEOUT_MS);
     // A second press while the mini player is on would close it, so only
     // retry when nothing happened at all.
     retryTimer = setTimeout(() => {

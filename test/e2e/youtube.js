@@ -19,7 +19,10 @@ const SEL = {
   shortsLockup: 'ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2',
   // Search shelves with a "Shorts" header; the same tag can hold other content.
   shortsShelf: 'grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2)',
-  regularVideoResult: 'ytd-search ytd-video-renderer:not(:has(a[href*="/shorts/"]))',
+  // A search result card. YouTube serves either the older ytd-video-renderer or
+  // the newer yt-lockup-view-model, sometimes switching between runs.
+  videoResultCard: 'ytd-video-renderer, yt-lockup-view-model',
+  regularVideoResult: 'ytd-search :is(ytd-video-renderer, yt-lockup-view-model):not(:has(a[href*="/shorts/"]))',
   shortsLink: 'a[href*="/shorts/"]',
   guideShortsEntry: 'ytd-guide-entry-renderer:has(a[title="Shorts"]), ytd-guide-entry-renderer:has(a[href^="/shorts"])',
   gridItem: 'ytd-rich-grid-renderer #contents > ytd-rich-item-renderer',

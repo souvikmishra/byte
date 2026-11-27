@@ -75,8 +75,9 @@ test.describe('Shorts hidden', () => {
     await expect(regular.first()).toBeVisible();
     const hiddenRegular = await regular.evaluateAll(els => els.filter(el => !el.checkVisibility()).length);
     expect(hiddenRegular).toBe(0);
-    const besideShelves = await shelves.evaluateAll(els => new Set(els.flatMap(shelf =>
-      [...shelf.parentElement.children].filter(el => el.matches('ytd-video-renderer') && el.checkVisibility()))).size);
+    const besideShelves = await shelves.evaluateAll((els, card) => new Set(els.flatMap(shelf =>
+      [...shelf.parentElement.children].filter(el => el.matches(card) && el.checkVisibility()))).size,
+    yt.SEL.videoResultCard);
     expect(besideShelves).toBeGreaterThan(0);
   });
 

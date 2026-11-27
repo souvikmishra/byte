@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const Core = require('../../lib/core.js');
+const Mark = require('../../lib/mark.js');
 
 const ROOT = path.join(__dirname, '..', '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -20,10 +21,17 @@ function installDefaults(reason = 'install') {
   let listener;
   let stored = null;
   const chrome = {
-    runtime: { onInstalled: { addListener: fn => { listener = fn; } } },
-    storage: { local: { set: obj => { stored = obj; } } },
+    runtime: {
+      onInstalled: { addListener: fn => { listener = fn; } },
+      onStartup: { addListener() {} },
+    },
+    storage: {
+      local: { set: obj => { stored = obj; }, get: async () => ({}) },
+      onChanged: { addListener() {} },
+    },
+    action: { setIcon: async () => {} },
   };
-  vm.runInNewContext(read('background.js'), { chrome }, { filename: 'background.js' });
+  vm.runInNewContext(read('background.js'), { chrome, ByteCore: Core, ByteMark: Mark, ImageData: class {}, console }, { filename: 'background.js' });
   assert.equal(typeof listener, 'function', 'background.js registers onInstalled');
   listener({ reason });
   return stored;
@@ -61,7 +69,41 @@ test('background runs in Chrome (service_worker) and Firefox (scripts)', () => {
   // 121+ uses "service_worker" and ignores "scripts" (with a "Warnings" note on
   // chrome://extensions in developer mode). Both must be the same file.
   assert.equal(manifest.background.service_worker, 'background.js');
-  assert.deepEqual(manifest.background.scripts, [manifest.background.service_worker]);
+  assert.deepEqual(manifest.background.scripts, ['lib/core.js', 'lib/mark.js', manifest.background.service_worker]);
+});
+
+test('toolbar icon uses the chosen accent', async () => {
+  const calls = [];
+  const listeners = {};
+  class FakeImageData { constructor(data, w, h) { this.data = data; this.width = w; this.height = h; } }
+  const chrome = {
+    runtime: { onInstalled: { addListener() {} }, onStartup: { addListener: fn => { listeners.startup = fn; } } },
+    storage: {
+      local: { get: async () => ({ byte_accent: 'cobalt' }), set() {} },
+      onChanged: { addListener: fn => { listeners.changed = fn; } },
+    },
+    action: { setIcon: async arg => { calls.push(arg); } },
+  };
+  const ctx = vm.createContext({ chrome, ImageData: FakeImageData, console });
+  ctx.globalThis = ctx;
+  for (const f of ['lib/core.js', 'lib/mark.js', 'background.js']) vm.runInContext(read(f), ctx, { filename: f });
+  await listeners.startup();
+  assert.equal(calls.length, 1);
+  const sizes = calls[0].imageData;
+  assert.deepEqual(Object.keys(sizes), ['16', '32']);
+  for (const px of [16, 32]) {
+    assert.equal(sizes[px].width, px);
+    const d = sizes[px].data;
+    let i = 0;
+    while (i < d.length && d[i + 3] === 0) i += 4;
+    assert.ok(i < d.length, `size ${px} has lit pixels`);
+    assert.deepEqual([d[i], d[i + 1], d[i + 2]], [61, 90, 254]);
+  }
+  // A change to another key does nothing; a change to the accent re-draws.
+  listeners.changed({ byte_paused: {} }, 'local');
+  listeners.changed({ byte_accent: {} }, 'local');
+  await new Promise(r => setImmediate(r));
+  assert.equal(calls.length, 2);
 });
 
 test('every file the manifest references exists', () => {

@@ -21,7 +21,7 @@
   },
   "background": {
     "service_worker": "background.js",
-    "scripts": ["background.js"]
+    "scripts": ["lib/core.js", "lib/mark.js", "background.js"]
   },
   "content_scripts": [
     {

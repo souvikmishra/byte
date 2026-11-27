@@ -3,6 +3,7 @@
 const toggleEnabled = document.getElementById('toggle-enabled');
 const toggleThumbs  = document.getElementById('toggle-thumbs');
 const togglePromos  = document.getElementById('toggle-promos');
+const toggleMiniplayer = document.getElementById('toggle-miniplayer');
 const sessionCountEl = document.getElementById('session-count');
 const totalCountEl   = document.getElementById('total-count');
 const badge          = document.getElementById('status-badge');
@@ -29,16 +30,18 @@ function renderStepper(n) {
 // ── Load persisted settings ───────────────────────────
 
 chrome.storage.local.get(
-  ['byte_enabled', 'byte_count', 'byte_grid_columns', 'byte_hide_thumbs', 'byte_hide_promos'],
+  ['byte_enabled', 'byte_count', 'byte_grid_columns', 'byte_hide_thumbs', 'byte_hide_promos', 'byte_miniplayer'],
   (data) => {
     const enabled = data.byte_enabled !== false;
     const cols    = data.byte_grid_columns ?? GRID_MIN;
     const thumbs  = data.byte_hide_thumbs === true;
     const promos  = data.byte_hide_promos !== false;
+    const miniplayer = data.byte_miniplayer !== false;
 
     toggleEnabled.checked = enabled;
     toggleThumbs.checked  = thumbs;
     togglePromos.checked  = promos;
+    toggleMiniplayer.checked = miniplayer;
     totalCountEl.textContent = fmt(data.byte_count || 0);
     applyStatus(enabled);
     renderStepper(cols);
@@ -86,6 +89,16 @@ togglePromos.addEventListener('change', () => {
   chrome.storage.local.set({ byte_hide_promos: enabled });
   chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
     if (tab) chrome.tabs.sendMessage(tab.id, { type: 'SET_PROMOS', enabled });
+  });
+});
+
+// ── Mini player on browse toggle ──────────────────────
+
+toggleMiniplayer.addEventListener('change', () => {
+  const enabled = toggleMiniplayer.checked;
+  chrome.storage.local.set({ byte_miniplayer: enabled });
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    if (tab) chrome.tabs.sendMessage(tab.id, { type: 'SET_MINIPLAYER', enabled });
   });
 });
 

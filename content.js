@@ -1,6 +1,9 @@
 (function () {
   'use strict';
 
+  // Shared pure logic from lib/core.js (listed before this file in manifest.json).
+  const Core = globalThis.ByteCore;
+
   // ── Constants ─────────────────────────────────────────
 
   const STYLE_ID        = 'byte-style';
@@ -12,16 +15,9 @@
   const PROCESSED_ATTR  = 'data-byte-seen';
   const DURATION_ATTR   = 'data-byte-dur';
   const GHOST_CLONE     = 'byte-ghost-clone';
-  const GHOST_HIDDEN    = 'byte-ghost-hidden';
-  const GRID_MIN        = 3;
-
-  const STORAGE = {
-    ENABLED:     'byte_enabled',
-    COUNT:       'byte_count',
-    GRID:        'byte_grid_columns',
-    HIDE_THUMBS: 'byte_hide_thumbs',
-    HIDE_PROMOS: 'byte_hide_promos',
-  };
+  const GHOST_HIDDEN    = Core.GHOST_HIDDEN;
+  const GRID_MIN        = Core.GRID_MIN;
+  const STORAGE         = Core.STORAGE;
 
   // ── State ─────────────────────────────────────────────
 
@@ -35,25 +31,9 @@
 
   // ── Shorts blocking ───────────────────────────────────
 
-  const SELECTORS = [
-    'ytd-reel-shelf-renderer',
-    'ytd-rich-shelf-renderer:has(ytm-shorts-lockup-view-model)',
-    'ytd-rich-section-renderer:has(ytd-reel-shelf-renderer)',
-    'ytd-rich-section-renderer:has(ytm-shorts-lockup-view-model)',
-    'ytm-shorts-lockup-view-model-v2',
-    'ytm-shorts-lockup-view-model',
-    'ytd-guide-entry-renderer:has(a[href^="/shorts"], a[title="Shorts"])',
-    'ytd-mini-guide-entry-renderer:has(a[href^="/shorts"], a[title="Shorts"])',
-    'ytd-shorts',
-    'ytd-rich-item-renderer:has(a[href*="/shorts/"])',
-    'ytd-video-renderer:has(a[href*="/shorts/"])',
-    'ytd-compact-video-renderer:has(a[href*="/shorts/"])',
-    'ytd-grid-video-renderer:has(a[href*="/shorts/"])',
-    'yt-chip-cloud-chip-renderer:has([title="Shorts"])',
-    '[overlay-style="SHORTS"]',
-  ];
+  const SELECTORS = Core.SHORTS_SELECTORS;
 
-  const CSS_RULE = SELECTORS.join(',\n') + ' { display: none !important; }';
+  const CSS_RULE = Core.buildShortsCSS();
 
   function injectCSS() {
     if (document.getElementById(STYLE_ID)) return;
@@ -89,13 +69,7 @@
   // ── Promo sections ────────────────────────────────────
 
   // Hidden via CSS only and kept out of SELECTORS so they don't count as blocked.
-  const PROMO_SELECTORS = [
-    'ytd-rich-section-renderer:has(ytd-brand-video-shelf-renderer)',
-    'ytd-rich-section-renderer:has(ytd-chips-shelf-with-video-shelf-renderer)',
-    'ytd-rich-section-renderer:has(ytd-brand-video-singleton-renderer)',
-    'ytd-brand-video-shelf-renderer',
-    'ytd-brand-video-singleton-renderer',
-  ].join(',\n');
+  const PROMO_SELECTORS = Core.PROMO_SELECTORS.join(',\n');
 
   function applyPromoStyle(enabled) {
     let el = document.getElementById(PROMO_STYLE_ID);
@@ -120,39 +94,7 @@
       el.id = GRID_STYLE_ID;
       (document.head || document.documentElement).appendChild(el);
     }
-    el.textContent = `
-      ytd-rich-grid-renderer {
-        --ytd-rich-grid-items-per-row: ${n} !important;
-        --ytd-rich-grid-slim-items-per-row: ${n} !important;
-        --ytd-rich-grid-item-min-width: 0px !important;
-      }
-      ytd-rich-grid-renderer #contents > ytd-continuation-item-renderer {
-        flex-basis: 100%;
-      }
-      ytd-ghost-grid-renderer .${GHOST_HIDDEN} {
-        display: none;
-      }
-
-      /* YouTube flags first-column items using its own row size, which zeroes the
-         left margin mid-row in flush grids. Give every item the same footprint. */
-      ytd-rich-grid-renderer #contents > ytd-rich-item-renderer[no-gutter-margins]:not([is-compact-grid]):not([is-shorts-grid]),
-      ytd-rich-grid-renderer:has(#contents > ytd-rich-item-renderer[no-gutter-margins]) ytd-ghost-grid-renderer:not([is-shorts]) .ghost-card {
-        margin-left: 0;
-        margin-right: var(--ytd-rich-grid-item-margin);
-      }
-      ytd-rich-grid-renderer #contents > ytd-rich-item-renderer[is-in-first-column]:not([no-gutter-margins]):not([is-compact-grid]):not([is-shorts-grid]) {
-        margin-left: calc(var(--ytd-rich-grid-item-margin) / 2);
-      }
-
-      #home-container-media {
-        grid-template-columns: repeat(${n}, minmax(0, 1fr)) !important;
-      }
-      /* Hide an incomplete last row of the first-load skeleton. */
-      #home-container-media > :nth-child(${n}n + ${n + 1}):nth-last-child(-n + ${n - 1}),
-      #home-container-media > :nth-child(${n}n + ${n + 1}):nth-last-child(-n + ${n - 1}) ~ * {
-        display: none;
-      }
-    `;
+    el.textContent = Core.buildGridCSS(n);
   }
 
   // YouTube stamps skeleton rows at its own row size; keep its row count but use ours.
@@ -318,13 +260,7 @@
     (document.head || document.documentElement).appendChild(el);
   }
 
-  function escapeAttr(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-  }
+  const escapeAttr = Core.escapeAttr;
 
   function collectChannelData() {
     const map = new Map();
@@ -415,6 +351,284 @@
     observer = null;
   }
 
+  // ── Mini player on browse ─────────────────────────────
+  // On /watch, a search or a click to a list page (home, channel, feed, …)
+  // first moves the video into YouTube's own mini player, then replays the
+  // action through YouTube's in-app navigation. Timeouts replay it anyway, and
+  // errors fall back to a normal page load. Spec: docs/miniplayer-on-browse.md
+
+  const MINI = Core.MINIPLAYER_SELECTORS;
+  const MINI_TIMEOUT_MS = 2500; // YouTube hasn't reacted at all: replay the action
+  // YouTube has started moving to the mini player (it navigates to / first,
+  // which took ~1.8s signed in). Replaying before it's on stops the video, so
+  // wait this much longer.
+  const MINI_SLOW_TIMEOUT_MS = 8000;
+  const MINI_RETRY_MS   = 800;  // press again if YouTube ignored the first press
+  const MINI_SETTLE_MS  = 1000; // mini player on and no navigation running: replay
+
+  let miniplayerEnabled = true;
+  let replaying         = false;
+  let pendingAction     = null; // { kind: 'search', query } | { kind: 'link', anchor, href }
+  let stopWaiting       = null; // clears the timers and listeners of the current wait
+
+  function isMiniplayerActive() {
+    return !!document.querySelector(MINI.active);
+  }
+
+  function miniplayerSkipReason() {
+    // Getters keep this cheap: the checks stop at the first reason.
+    return Core.miniplayerSkipReason({
+      enabled: miniplayerEnabled,
+      get onWatch()          { return Core.isWatchPath(location.pathname); },
+      replaying,
+      get miniplayerActive() { return isMiniplayerActive(); },
+      get fullscreen()       { return !!document.fullscreenElement; },
+      get adShowing()        { return !!document.querySelector(MINI.adShowing); },
+      get hasPlayer()        { return !!document.querySelector(MINI.player); },
+    });
+  }
+
+  // While an action is waiting for the mini player, newer actions replace it.
+  function shouldIntercept() {
+    return !replaying && (pendingAction !== null || miniplayerSkipReason() === null);
+  }
+
+  // Runs fn with `replaying` set so our listeners let the action through.
+  // Dispatching click/submit is synchronous, so the flag covers it exactly.
+  function replay(fn) {
+    replaying = true;
+    try { fn(); } finally { replaying = false; }
+  }
+
+  function actionUrl(action) {
+    return action.kind === 'search'
+      ? '/results?search_query=' + encodeURIComponent(action.query)
+      : new URL(action.href, location.href).href;
+  }
+
+  function replaySearch(query) {
+    const input  = document.querySelector(MINI.searchInput);
+    const button = document.querySelector(MINI.searchButton);
+    if (!input || !button) {
+      location.href = actionUrl({ kind: 'search', query });
+      return;
+    }
+    input.value = query;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    replay(() => button.click());
+  }
+
+  function replayLink(anchor, href) {
+    const url = new URL(href, location.href);
+    if (url.pathname + url.search === location.pathname + location.search) return; // already there
+    let target = anchor && anchor.isConnected ? anchor : null;
+    if (!target) target = document.querySelector(`a[href="${CSS.escape(href)}"]`);
+    if (target) replay(() => target.click());
+    else location.href = url.href;
+  }
+
+  function replayAction(action) {
+    try {
+      if (action.kind === 'search') replaySearch(action.query);
+      else replayLink(action.anchor, action.href);
+    } catch (_) {
+      location.href = actionUrl(action);
+    }
+  }
+
+  // Current players have no mini player button; the "i" shortcut works and
+  // YouTube accepts it from a script.
+  function pressMiniplayer() {
+    const button = document.querySelector(MINI.button);
+    if (button && button.checkVisibility && button.checkVisibility()) {
+      button.click();
+      return;
+    }
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'i', code: 'KeyI', keyCode: 73, which: 73, bubbles: true, cancelable: true,
+    }));
+  }
+
+  // The user chose something else (another video): drop the waiting
+  // action so it can't replace that choice later.
+  function cancelPendingAction() {
+    if (stopWaiting) stopWaiting();
+    pendingAction = null;
+  }
+
+  // Turns the mini player on (YouTube then navigates to /) and replays
+  // pendingAction once the mini player is on and that navigation is done.
+  function moveToMiniplayerThen(action) {
+    if (pendingAction) {
+      pendingAction = action;
+      return;
+    }
+    pendingAction = action;
+
+    let navStarted  = false;
+    let navFinished = false;
+    let done        = false;
+    let settleTimer = null;
+    let timeoutTimer = null;
+    let retryTimer   = null;
+    let appObserver  = null;
+    const app = document.querySelector('ytd-app');
+
+    const stop = () => {
+      done = true;
+      if (stopWaiting === stop) stopWaiting = null;
+      clearTimeout(timeoutTimer);
+      clearTimeout(retryTimer);
+      clearTimeout(settleTimer);
+      if (appObserver) appObserver.disconnect();
+      document.removeEventListener('yt-navigate-start', onStart, true);
+      document.removeEventListener('yt-navigate-finish', onFinish, true);
+    };
+    stopWaiting = stop;
+    const finish = () => {
+      if (done) return;
+      stop();
+      const next = pendingAction;
+      pendingAction = null;
+      replayAction(next);
+    };
+    // While YouTube's navigation to / is still running, replaying would stop
+    // the video: leave it to yt-navigate-finish (onFinish) or the slow timeout.
+    const settle = () => {
+      if (navStarted && !navFinished) return;
+      finish();
+    };
+    const check = () => {
+      if (!isMiniplayerActive()) return;
+      if (navFinished) finish();
+      else if (!settleTimer) settleTimer = setTimeout(settle, MINI_SETTLE_MS);
+    };
+    const onStart  = () => { navStarted = true; };
+    const onFinish = () => { navFinished = true; check(); };
+
+    document.addEventListener('yt-navigate-start', onStart, true);
+    document.addEventListener('yt-navigate-finish', onFinish, true);
+    if (app) {
+      appObserver = new MutationObserver(check);
+      appObserver.observe(app, { attributes: true, attributeFilter: ['miniplayer-is-active'] });
+    }
+    timeoutTimer = setTimeout(() => {
+      if (navStarted && !done) timeoutTimer = setTimeout(finish, MINI_SLOW_TIMEOUT_MS);
+      else finish();
+    }, MINI_TIMEOUT_MS);
+    // A second press while the mini player is on would close it, so only
+    // retry when nothing happened at all.
+    retryTimer = setTimeout(() => {
+      if (!done && !navStarted && !isMiniplayerActive()) pressMiniplayer();
+    }, MINI_RETRY_MS);
+
+    try {
+      pressMiniplayer();
+    } catch (_) {
+      finish();
+    }
+  }
+
+  function intercept(e, action) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    try {
+      moveToMiniplayerThen(action);
+    } catch (_) {
+      cancelPendingAction();
+      location.href = actionUrl(action);
+    }
+  }
+
+  function currentSearchQuery() {
+    const input = document.querySelector(MINI.searchInput);
+    return input ? input.value.trim() : '';
+  }
+
+  function blurSearch() {
+    const el = document.activeElement;
+    if (el && el.matches && el.matches(MINI.searchInput)) el.blur();
+  }
+
+  // Picks a suggestion from the search dropdown. YouTube searches on press
+  // (pointerdown/mousedown), before any click, so this runs for all three;
+  // repeats for the same press just replace the pending action.
+  // The row a press landed in: the listbox child containing the target.
+  function suggestionRow(target) {
+    const list = target.closest(MINI.searchSuggestionList);
+    if (!list) return null;
+    let row = target;
+    while (row && row.parentElement !== list) row = row.parentElement;
+    return row;
+  }
+
+  function onSuggestionPress(e) {
+    if (!Core.isPlainLeftClick(e) || !(e.target instanceof Element)) return false;
+    const row = suggestionRow(e.target);
+    if (!row) return false;
+    const option = row.matches('[role="option"]') ? row : row.querySelector('[role="option"]');
+    if (!option) return false;
+    // Other controls in the row (e.g. "Remove" on a history entry) keep
+    // their own behavior.
+    const control = e.target.closest('button, a, [role="button"]');
+    if (control && !option.contains(control)) return false;
+    if (!shouldIntercept()) return false;
+    const query = (option.getAttribute('aria-label') || option.textContent || '').trim();
+    if (!query) return false;
+    blurSearch();
+    intercept(e, { kind: 'search', query });
+    return true;
+  }
+
+  // Capture phase on document runs before YouTube's own handlers.
+  document.addEventListener('pointerdown', onSuggestionPress, true);
+  document.addEventListener('mousedown', onSuggestionPress, true);
+
+  document.addEventListener('click', e => {
+    if (!Core.isPlainLeftClick(e) || !(e.target instanceof Element)) return;
+    if (!shouldIntercept()) return;
+
+    if (e.target.closest(MINI.searchButton)) {
+      const query = currentSearchQuery();
+      if (!query) return;
+      blurSearch();
+      intercept(e, { kind: 'search', query });
+      return;
+    }
+
+    if (onSuggestionPress(e)) return;
+
+    const anchor = e.target.closest('a[href]');
+    if (!anchor || Core.targetOpensNewContext(anchor.getAttribute('target'))) return;
+    const href = anchor.getAttribute('href');
+    if (Core.classifyLink(href, location.href) !== 'list') {
+      // Another video etc. while an action waits: YouTube opens it, and the
+      // waiting action must not navigate away from it afterwards.
+      if (pendingAction && Core.cancelsPendingAction(href, location.href)) cancelPendingAction();
+      return;
+    }
+    intercept(e, { kind: 'link', anchor, href });
+  }, true);
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.isComposing || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!(e.target instanceof Element) || !e.target.matches(MINI.searchInput)) return;
+    if (!shouldIntercept()) return;
+    const query = e.target.value.trim();
+    if (!query) return;
+    blurSearch();
+    intercept(e, { kind: 'search', query });
+  }, true);
+
+  document.addEventListener('submit', e => {
+    if (!(e.target instanceof Element) || !e.target.closest(MINI.searchbox)) return;
+    if (!shouldIntercept()) return;
+    const query = currentSearchQuery();
+    if (!query) return;
+    blurSearch();
+    intercept(e, { kind: 'search', query });
+  }, true);
+
   // ── Lifecycle ─────────────────────────────────────────
 
   function enable() {
@@ -438,11 +652,13 @@
   }
 
   function init() {
-    chrome.storage.local.get([STORAGE.ENABLED, STORAGE.GRID, STORAGE.HIDE_THUMBS, STORAGE.HIDE_PROMOS], data => {
-      isEnabled        = data[STORAGE.ENABLED] !== false;
-      gridColumns      = data[STORAGE.GRID] ?? GRID_MIN;
-      hideThumbsEnabled = data[STORAGE.HIDE_THUMBS] === true;
-      hidePromosEnabled = data[STORAGE.HIDE_PROMOS] !== false;
+    chrome.storage.local.get([STORAGE.ENABLED, STORAGE.GRID, STORAGE.HIDE_THUMBS, STORAGE.HIDE_PROMOS, STORAGE.MINIPLAYER], data => {
+      const settings    = Core.readSettings(data);
+      isEnabled         = settings.enabled;
+      gridColumns       = settings.gridColumns;
+      hideThumbsEnabled = settings.hideThumbs;
+      hidePromosEnabled = settings.hidePromos;
+      miniplayerEnabled = settings.miniplayer;
       if (isEnabled) enable();
     });
   }
@@ -487,6 +703,10 @@
         applyPromoStyle(hidePromosEnabled);
         updateInsightBar();
       }
+      sendResponse({ ok: true });
+    }
+    if (msg.type === 'SET_MINIPLAYER') {
+      miniplayerEnabled = msg.enabled;
       sendResponse({ ok: true });
     }
   });

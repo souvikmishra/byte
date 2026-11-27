@@ -21,11 +21,11 @@
   <main>
     <div class="row">
       <div class="row-label">
-        <span class="label-title">Block Shorts</span>
+        <span class="label-title" id="toggle-enabled-title">Block Shorts</span>
         <span class="label-sub">Hides shelves, cards &amp; sidebar entry</span>
       </div>
       <label class="toggle" for="toggle-enabled">
-        <input type="checkbox" id="toggle-enabled" />
+        <input type="checkbox" id="toggle-enabled" aria-labelledby="toggle-enabled-title" />
         <span class="track"><span class="thumb"></span></span>
       </label>
     </div>
@@ -48,11 +48,11 @@
 
     <div class="row">
       <div class="row-label">
-        <span class="label-title">Hide thumbnails</span>
+        <span class="label-title" id="toggle-thumbs-title">Hide thumbnails</span>
         <span class="label-sub">Duration moves to the metadata row</span>
       </div>
       <label class="toggle" for="toggle-thumbs">
-        <input type="checkbox" id="toggle-thumbs" />
+        <input type="checkbox" id="toggle-thumbs" aria-labelledby="toggle-thumbs-title" />
         <span class="track"><span class="thumb"></span></span>
       </label>
     </div>
@@ -61,11 +61,24 @@
 
     <div class="row">
       <div class="row-label">
-        <span class="label-title">Hide promo sections</span>
+        <span class="label-title" id="toggle-promos-title">Hide promo sections</span>
         <span class="label-sub">Memberships, music, topics &amp; Premium</span>
       </div>
       <label class="toggle" for="toggle-promos">
-        <input type="checkbox" id="toggle-promos" />
+        <input type="checkbox" id="toggle-promos" aria-labelledby="toggle-promos-title" />
+        <span class="track"><span class="thumb"></span></span>
+      </label>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+      <div class="row-label">
+        <span class="label-title" id="toggle-miniplayer-title">Mini player on browse</span>
+        <span class="label-sub">Keep the video playing when you search or open a channel</span>
+      </div>
+      <label class="toggle" for="toggle-miniplayer">
+        <input type="checkbox" id="toggle-miniplayer" aria-labelledby="toggle-miniplayer-title" />
         <span class="track"><span class="thumb"></span></span>
       </label>
     </div>

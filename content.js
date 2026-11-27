@@ -364,7 +364,7 @@
   // wait this much longer.
   const MINI_SLOW_TIMEOUT_MS = 8000;
   const MINI_RETRY_MS   = 800;  // press again if YouTube ignored the first press
-  const MINI_SETTLE_MS  = 1000; // mini player on but no navigation seen: replay
+  const MINI_SETTLE_MS  = 1000; // mini player on and no navigation running: replay
 
   let miniplayerEnabled = true;
   let replaying         = false;
@@ -492,10 +492,16 @@
       pendingAction = null;
       replayAction(next);
     };
+    // While YouTube's navigation to / is still running, replaying would stop
+    // the video: leave it to yt-navigate-finish (onFinish) or the slow timeout.
+    const settle = () => {
+      if (navStarted && !navFinished) return;
+      finish();
+    };
     const check = () => {
       if (!isMiniplayerActive()) return;
       if (navFinished) finish();
-      else if (!settleTimer) settleTimer = setTimeout(finish, MINI_SETTLE_MS);
+      else if (!settleTimer) settleTimer = setTimeout(settle, MINI_SETTLE_MS);
     };
     const onStart  = () => { navStarted = true; };
     const onFinish = () => { navFinished = true; check(); };

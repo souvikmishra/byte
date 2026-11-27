@@ -122,12 +122,8 @@ test.describe('Mini player on browse', () => {
     const id = new URL(await related.getAttribute('href'), yt.ORIGIN).searchParams.get('v');
     // Search with Enter, then pick the video in the same task, so the click
     // lands while the search is still waiting. Record every URL shown after.
+    await yt.recordUrls(page);
     await page.evaluate(({ inputSel, relatedSel }) => {
-      window.__urls = [];
-      setInterval(() => {
-        const u = location.pathname + location.search;
-        if (window.__urls[window.__urls.length - 1] !== u) window.__urls.push(u);
-      }, 20);
       const input = document.querySelector(inputSel);
       input.value = 'lofi hip hop';
       input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -140,7 +136,7 @@ test.describe('Mini player on browse', () => {
     // that was still pending would have run.
     const start = Date.now();
     await expect.poll(() => Date.now() - start > 12_000, { timeout: 20_000, intervals: [1000] }).toBe(true);
-    const urls = await page.evaluate(() => window.__urls);
+    const urls = await yt.recordedUrls(page);
     expect(urls.some(u => u.startsWith('/results')), `URLs shown: ${urls.join(' ')}`).toBe(false);
     expect(new URL(page.url()).searchParams.get('v')).toBe(id);
   });
@@ -220,19 +216,13 @@ test('video opened from a search list: never goes through Home', async ({ page }
   await yt.waitForVideoPlaying(page);
   const before = await yt.playerVideo(page);
   // Going back to the list restores it from YouTube's cache without a
-  // navigation event, so record every URL the tab shows instead.
-  await page.evaluate(() => {
-    window.__urls = [];
-    setInterval(() => {
-      const u = location.pathname + location.search;
-      if (window.__urls[window.__urls.length - 1] !== u) window.__urls.push(u);
-    }, 20);
-  });
+  // yt-navigate event, so record every URL the tab shows instead.
+  await yt.recordUrls(page);
 
   await yt.search(page, 'lofi hip hop');
   await expectOnResults(page, 'lofi hip hop');
   await expectMiniplayerPlaying(page, before);
-  const urls = await page.evaluate(() => window.__urls);
+  const urls = await yt.recordedUrls(page);
   expect(urls, 'URLs shown after the search').not.toContain('/');
   expect(urls[urls.length - 1]).toBe('/results?search_query=lofi+hip+hop');
 });

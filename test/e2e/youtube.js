@@ -157,6 +157,26 @@ async function expectStillPlaying(page, before) {
   }, { timeout: 15_000, message: `video ${before.id} still playing past ${before.time.toFixed(1)}s` }).toBe(true);
 }
 
+// Starts recording every URL the tab shows (path + query), starting with the
+// current one. The Navigation API reports each change as it happens
+// (pushState, replaceState, back/forward), including YouTube restoring a page
+// from its cache without a yt-navigate-* event, so even a brief detour is
+// recorded. Read the list with recordedUrls().
+async function recordUrls(page) {
+  await page.evaluate(() => {
+    const path = href => { const u = new URL(href); return u.pathname + u.search; };
+    const urls = window.__byteUrls = [path(location.href)];
+    navigation.addEventListener('currententrychange', () => {
+      const u = path(navigation.currentEntry.url);
+      if (urls[urls.length - 1] !== u) urls.push(u);
+    });
+  });
+}
+
+function recordedUrls(page) {
+  return page.evaluate(() => window.__byteUrls);
+}
+
 function miniplayerActive(page) {
   return page.locator('ytd-app').evaluate(app => app.hasAttribute('miniplayer-is-active'));
 }
@@ -181,4 +201,5 @@ module.exports = {
   handleConsent, failIfRateLimited, gotoYouTube, gotoSearch, gotoWatch, search,
   visibleShortsLinkCount, gridItemsPerRow, playerState, waitForVideoPlaying,
   playerVideo, expectStillPlaying, expectVideoStopped, miniplayerActive,
+  recordUrls, recordedUrls,
 };

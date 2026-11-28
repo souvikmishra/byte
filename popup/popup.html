@@ -13,7 +13,7 @@
       <span id="mark" aria-hidden="true"></span>
       <span id="wordmark" role="img" aria-label="BYTE"></span>
     </span>
-    <span class="where">your home feed</span>
+    <span id="where" class="where" hidden>your home feed</span>
     <!-- Icons: design/ui-icons/pause.svg and play.svg (16px only). -->
     <button id="pause" type="button" aria-pressed="false" aria-label="Pause BYTE" title="Pause BYTE">
       <svg class="icon icon-pause" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" shape-rendering="crispEdges" aria-hidden="true"><g fill="currentColor"><rect x="3" y="3" width="2" height="10"/><rect x="11" y="3" width="2" height="10"/></g><rect x="3" y="3" width="2" height="10"/><rect x="11" y="3" width="2" height="10"/></svg>
@@ -21,8 +21,27 @@
     </button>
   </header>
 
-  <!-- Filled in by Task 10 (mirror, live picture, hold to compare). -->
-  <section id="window"></section>
+  <!-- Fixed size: the faces cross-fade inside it, so nothing below moves. -->
+  <section id="window" class="fallback">
+    <div class="face face-mirror">
+      <div>
+        <p id="mirror-headline" class="headline"></p>
+        <p id="mirror-sub" class="sub"></p>
+      </div>
+      <div id="mirror-bars" class="bars" aria-hidden="true" hidden></div>
+    </div>
+    <div class="face face-picture">
+      <!-- Built by wireframe.js. -->
+      <div id="wf" aria-hidden="true"></div>
+      <p id="wf-caption" class="caption"></p>
+    </div>
+    <p id="summary" class="summary" role="status"></p>
+    <button id="compare" type="button" disabled>
+      <!-- design/ui-icons/compare.svg -->
+      <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" shape-rendering="crispEdges" aria-hidden="true"><g fill="currentColor"><path d="M9 3H11V4H12V5H13V7H14V9H13V11H12V12H11V13H9Z"/></g><path d="M7 2H9V3H11V4H12V5H13V7H14V9H13V11H12V12H11V13H9V14H7V13H5V12H4V11H3V9H2V7H3V5H4V4H5V3H7Z"/></svg>
+      Hold to compare
+    </button>
+  </section>
 
   <!-- One .row per ByteCore.FEATURES entry, built by popup.js. -->
   <div id="rows" class="rows"></div>
@@ -38,6 +57,7 @@
 
   <script src="../lib/core.js"></script>
   <script src="../lib/mark.js"></script>
+  <script src="wireframe.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

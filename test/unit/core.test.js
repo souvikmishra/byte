@@ -195,3 +195,15 @@ test('buildHighlightCSS outlines the feature and never hides anything', () => {
   assert.equal(Core.buildHighlightCSS('miniplayer', '#C6F135'), '');
   assert.equal(Core.buildHighlightCSS('nope', '#C6F135'), '');
 });
+
+test('compareSummary: the defaults', () => {
+  assert.deepEqual(Core.compareSummary(Core.readSettings({})),
+    ['hides Shorts and promos', '3 videos per row', 'adds the channel bar']);
+});
+test('compareSummary: paused changes nothing', () => {
+  assert.deepEqual(Core.compareSummary(Core.readSettings({ byte_paused: true })), []);
+});
+test('compareSummary: all three hidden', () => {
+  const parts = Core.compareSummary(Core.readSettings({ byte_hide_thumbs: true }));
+  assert.equal(parts[0], 'hides Shorts, promos and thumbnails');
+});

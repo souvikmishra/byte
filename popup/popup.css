@@ -31,6 +31,10 @@
   --bar: #d4d4d8;
   --off: #d4d4d8;
   --knob: #ffffff;
+  /* Wireframe greys, lightest to darkest. */
+  --b1: #e4e4e7;
+  --b2: #d4d4d8;
+  --b3: #c4c4c9;
 
   --ease: cubic-bezier(.2, .8, .2, 1);
   --snap: 150ms;
@@ -48,6 +52,9 @@
     --bar: #3a3a40;
     --off: #3a3a40;
     --knob: #e4e4e7;
+    --b1: #2a2a2e;
+    --b2: #34343a;
+    --b3: #44444c;
   }
 }
 
@@ -68,6 +75,8 @@ html, body {
 }
 
 button, a { font: inherit; color: inherit; }
+
+[hidden] { display: none !important; }
 
 :focus-visible {
   outline: 2px solid var(--ink);
@@ -131,8 +140,9 @@ body.paused #pause {
 body.paused #pause .icon-pause { display: none; }
 body.paused #pause .icon-play { display: block; }
 
-/* ── Window (Task 10 fills it) ───────────────────────── */
+/* ── Window ──────────────────────────────────────────── */
 
+/* Fixed size: the mirror and the picture cross-fade inside it. */
 #window {
   position: relative;
   height: 168px;
@@ -140,7 +150,248 @@ body.paused #pause .icon-play { display: block; }
   border-radius: 12px;
   background: var(--wash);
   overflow: hidden;
+  user-select: none;
 }
+
+.face {
+  position: absolute;
+  inset: 0;
+  padding: 12px;
+  transition: opacity 250ms, transform 350ms var(--ease), filter 250ms;
+}
+
+.face-mirror {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.headline {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  line-height: 1.2;
+}
+.sub {
+  margin-top: 2px;
+  color: var(--ink2);
+  font-size: 12px;
+}
+/* Fallbacks and pause: a sentence, not a number. */
+#window.fallback .headline {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+#window.fallback .sub { max-width: 250px; }
+
+/* Videos per channel, largest first; the loop channels are in the accent. */
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 50px;
+  margin-bottom: 30px; /* clear of the compare button */
+}
+.bars.dense { gap: 2px; }
+.bars i {
+  flex: 1;
+  min-height: 3px;
+  border-radius: 5px 5px 2px 2px;
+  background: var(--bar);
+}
+.bars.dense i { border-radius: 2px 2px 1px 1px; }
+.bars i.top { background: var(--accent); }
+
+.face-picture {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  opacity: 0;
+  transform: scale(.97);
+}
+.caption {
+  padding: 4px 4px 0;
+  color: var(--ink2);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+#window.show-pic .face-mirror { opacity: 0; transform: scale(1.02); filter: blur(2px); }
+#window.show-pic .face-picture { opacity: 1; transform: none; }
+
+/* Slides up while compare is held. */
+.summary {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  padding: 8px 12px 9px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  transform: translateY(100%);
+  transition: transform 300ms var(--ease);
+}
+#window.holding .summary { transform: none; }
+
+#compare {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: var(--paper);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .06);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color var(--snap), color var(--snap), opacity 200ms, transform 120ms;
+}
+#compare:hover:not(:disabled) { background: var(--wash); }
+#compare:disabled { opacity: .45; cursor: default; box-shadow: none; }
+/* The caption gets the full width while a row is previewed. */
+#window.show-pic:not(.holding) #compare { opacity: 0; pointer-events: none; }
+#window.holding #compare {
+  opacity: 0;
+  background: var(--ink);
+  color: var(--paper);
+  transform: scale(.97);
+}
+
+/* ── Wireframe (built by wireframe.js) ───────────────── */
+
+.wf {
+  --cols: 3;
+  --hi: var(--ink);
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  height: 116px; /* leaves room for a two-line caption */
+  padding: 6px;
+  overflow: hidden;
+}
+.wf-top { display: flex; align-items: center; gap: 6px; height: 9px; flex: none; }
+.wf-top .lg { width: 18px; height: 7px; border-radius: 2px; background: var(--b3); }
+.wf-top .sr { flex: 1; max-width: 45%; height: 7px; margin: 0 auto; border: 1px solid var(--b2); border-radius: 99px; background: var(--b1); }
+.wf-body { display: flex; flex: 1; gap: 6px; min-height: 0; }
+.wf-side { display: flex; flex-direction: column; flex: none; gap: 4px; width: 26px; padding-top: 2px; }
+.wf-side i {
+  max-height: 5px;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--b2);
+  outline: 1.5px dashed transparent;
+  outline-offset: 1px;
+  transition: max-height 350ms, opacity 300ms, margin 350ms, outline-color 200ms;
+}
+.wf-main { position: relative; display: flex; flex-direction: column; flex: 1; gap: 5px; min-width: 0; overflow: hidden; }
+.wf-chan {
+  display: flex;
+  align-items: flex-end;
+  flex: none;
+  gap: 2px;
+  height: 12px;
+  max-height: 12px;
+  transition: max-height 400ms var(--ease), opacity 300ms, margin 400ms;
+}
+.wf-chan b { flex: 1; border-radius: 2px 2px 1px 1px; background: var(--b3); }
+.wf-chan b.top { background: var(--accent); }
+.wf-grid { display: flex; flex: none; flex-wrap: wrap; gap: 5px; }
+.wf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: calc((100% - (var(--cols) - 1) * 5px) / var(--cols));
+  outline: 1.5px dashed transparent;
+  outline-offset: 1px;
+  transition: width 450ms var(--ease), outline-color 200ms;
+}
+.wf-thumb {
+  padding-top: 56%;
+  border-radius: 3px;
+  background: var(--b2);
+  outline: 1.5px dashed transparent;
+  outline-offset: 1px;
+  transition: padding-top 400ms var(--ease), outline-color 200ms;
+}
+.wf-l1, .wf-l2 { height: 3px; border-radius: 2px; background: var(--b2); }
+.wf-l2 { width: 60%; background: var(--b1); }
+.wf-shelf {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  max-height: 44px;
+  padding: 3px;
+  overflow: hidden;
+  border-radius: 4px;
+  outline: 1.5px dashed transparent;
+  outline-offset: -1px;
+  transition: max-height 450ms var(--ease), opacity 300ms, padding 450ms, margin 450ms, outline-color 200ms;
+}
+.wf-shelf i { flex: none; width: 14%; height: 36px; border-radius: 3px; background: var(--b3); }
+.wf-promo {
+  flex: none;
+  height: 16px;
+  max-height: 16px;
+  border: 1px solid var(--b2);
+  border-radius: 4px;
+  background: var(--b1);
+  outline: 1.5px dashed transparent;
+  outline-offset: 1px;
+  transition: max-height 450ms var(--ease), opacity 300ms, border-width 450ms, margin 450ms, outline-color 200ms;
+}
+/* The mini player: a small dark player with a progress line, sliding in. */
+.wf-mini {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 58px;
+  height: 34px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--ink);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .25);
+  opacity: 0;
+  transform: translate(10px, 10px) scale(.6);
+  transition: opacity 300ms, transform 400ms var(--ease);
+}
+.wf-mini i {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  width: 40%;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.wf.mini .wf-mini { opacity: 1; transform: none; }
+.wf.no-shorts .wf-shelf { max-height: 0; padding: 0 3px; margin-top: -5px; opacity: 0; }
+.wf.no-shorts .wf-side .sh { max-height: 0; margin-top: -4px; opacity: 0; }
+.wf.no-thumbs .wf-thumb { padding-top: 0; }
+.wf.no-promos .wf-promo { max-height: 0; margin-top: -5px; border-width: 0; opacity: 0; }
+.wf.plain .wf-chan { max-height: 0; margin-top: -5px; opacity: 0; }
+
+/* The part a hovered row is about to change. The channel bar and the mini
+   player are additions: there is nothing to outline before they appear. */
+.wf.flag-shorts .wf-shelf,
+.wf.flag-shorts .wf-side .sh,
+.wf.flag-thumbs .wf-thumb,
+.wf.flag-promos .wf-promo,
+.wf.flag-grid .wf-card { outline-color: var(--hi); }
 
 /* ── Setting rows ────────────────────────────────────── */
 

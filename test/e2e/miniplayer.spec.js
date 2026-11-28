@@ -254,6 +254,17 @@ test('setting stored as off: search from /watch stops the video like before', as
   await yt.expectVideoStopped(page, before);
 });
 
+test('BYTE paused: search from /watch stops the video like before', async ({ page, extension }) => {
+  // Paused means YouTube is back to normal: the mini player must stay off.
+  await extension.setStorage({ byte_paused: true });
+  await yt.gotoWatch(page);
+  const before = await yt.playerVideo(page);
+  await yt.search(page, 'lofi hip hop');
+  await expectOnResults(page, 'lofi hip hop');
+  await yt.expectVideoStopped(page, before);
+  expect(await yt.miniplayerActive(page)).toBe(false);
+});
+
 test('works with Hide Shorts off (independent switches)', async ({ page, extension }) => {
   await extension.setStorage({ byte_hide_shorts: false });
   await yt.gotoWatch(page);

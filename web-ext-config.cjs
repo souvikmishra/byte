@@ -9,6 +9,8 @@ module.exports = {
     'AGENTS.md',
     'CLAUDE.md',
     'docs',
+    'design',
+    'icons.yaml',
     'scripts',
     'test',
     'test-results',

@@ -1,0 +1,20 @@
+product: BYTE, a browser-extension popup that cleans up YouTube; its mark is a pixel-art bitten tile
+personality: [calm, precise, quietly playful]
+sizes: [16]
+dir: design/ui-icons
+avoid: [letters or numbers inside icons, YouTube play-button shapes (no red, no rounded triangle in a rounded rect)]
+
+dna:
+  style: outline  # compare, pause and play are filled twins (data-style="filled") for solid shapes
+  pixel: true
+  stroke: 2  # 2px stems on a 1px grid, like the BYTE wordmark
+  grid: 16  # shown at 16px: one grid unit is one screen pixel
+  padding: 1
+  keylines: { circle: 14, square: 12, portrait: [10, 14], landscape: [14, 10] }
+  corners: { family: sharp, radius: { large: 0, small: 0 }, largeThreshold: 8 }
+  caps: square
+  joins: miter
+  angles: [0, 90]
+  detail: medium  # stair steps count as pieces
+  minGap: 0.8  # 2px pixel strokes: 2x2 blocks touching at a corner count as a join
+  badge: { position: bottom-right, size: 6, gap: 1 }

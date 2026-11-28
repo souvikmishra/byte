@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" data-style="filled" data-aliases="pause-byte" data-waive-gap="solid shape: its outline is meant to fill in">
+  <rect x="3" y="3" width="2" height="10"/>
+  <rect x="11" y="3" width="2" height="10"/>
+  <rect x="3" y="3" width="2" height="10" data-role="silhouette"/>
+  <rect x="11" y="3" width="2" height="10" data-role="silhouette"/>
+</svg>

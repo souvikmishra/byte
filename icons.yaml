@@ -2,7 +2,7 @@ product: BYTE, a browser-extension popup that cleans up YouTube; its mark is a p
 personality: [calm, precise, quietly playful]
 sizes: [16]
 dir: design/ui-icons
-avoid: [letters or numbers inside icons, YouTube play-button shapes (no red, no rounded triangle in a rounded rect)]
+avoid: [letters or numbers inside icons, "YouTube play-button shapes (no red, no rounded triangle in a rounded rect)"]
 
 dna:
   style: outline  # compare, pause and play are filled twins (data-style="filled") for solid shapes

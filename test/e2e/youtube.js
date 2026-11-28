@@ -9,6 +9,11 @@ const ORIGIN = 'https://www.youtube.com';
 // A long, stable public video (Big Buck Bunny, Blender Foundation).
 const TEST_VIDEO_ID = 'aqz-KE-bpKQ';
 
+// A signed-out page with a rich grid whose cards link to many distinct channels
+// (/@handle). Channel /videos tabs and the signed-out home feed don't qualify:
+// their cards have no channel link or the feed is empty.
+const CHANNEL_GRID_PAGE = '/podcasts';
+
 const SEL = {
   app: 'ytd-app',
   // yt-searchbox also contains a hidden <input type=file> for image search.
@@ -214,7 +219,7 @@ async function gotoWatch(page, videoId = TEST_VIDEO_ID) {
 }
 
 module.exports = {
-  ORIGIN, TEST_VIDEO_ID, SEL,
+  ORIGIN, TEST_VIDEO_ID, CHANNEL_GRID_PAGE, SEL,
   handleConsent, failIfRateLimited, gotoYouTube, gotoSearch, gotoWatch, search,
   visibleShortsLinkCount, gridItemsPerRow, playerState, waitForVideoPlaying,
   playerVideo, expectStillPlaying, expectVideoStopped, miniplayerActive,

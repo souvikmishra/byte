@@ -95,7 +95,7 @@ const test = base.extend({
       // Wait until background.js has written its install defaults, so a later
       // setStorage() can't be overwritten by onInstalled.
       async waitForInstallDefaults() {
-        await expect.poll(async () => (await helpers.getStorage()).byte_enabled,
+        await expect.poll(async () => (await helpers.getStorage()).byte_hide_shorts,
           { message: 'install defaults written by background.js' }).not.toBeUndefined();
       },
 
@@ -105,8 +105,8 @@ const test = base.extend({
       async openPopup(targetPage) {
         const popup = await context.newPage();
         await popup.goto(popupUrl);
-        // popup.js fills in the all-time count once storage has loaded.
-        await expect(popup.locator('#total-count')).not.toHaveText('—');
+        // popup.js fills in the Shorts-hidden count once storage has loaded.
+        await expect(popup.locator('#shorts-count')).not.toHaveText('—');
         await targetPage.bringToFront();
         return popup;
       },

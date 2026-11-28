@@ -10,21 +10,21 @@
   const GRID_STYLE_ID   = 'byte-grid-style';
   const THUMB_STYLE_ID  = 'byte-thumb-style';
   const PROMO_STYLE_ID  = 'byte-promo-style';
+  const HIGHLIGHT_STYLE_ID = 'byte-highlight';
   const INSIGHT_CSS_ID  = 'byte-insight-css';
   const INSIGHT_BAR_ID  = 'byte-insight';
   const PROCESSED_ATTR  = 'data-byte-seen';
   const DURATION_ATTR   = 'data-byte-dur';
   const GHOST_CLONE     = 'byte-ghost-clone';
   const GHOST_HIDDEN    = Core.GHOST_HIDDEN;
-  const GRID_MIN        = Core.GRID_MIN;
   const STORAGE         = Core.STORAGE;
 
   // ── State ─────────────────────────────────────────────
 
-  let isEnabled        = true;
-  let gridColumns      = GRID_MIN;
-  let hideThumbsEnabled = false;
-  let hidePromosEnabled = true;
+  let settings         = Core.readSettings({});
+  let comparing        = false; // set by the popup's compare hold (Task 4)
+  let highlight        = null;  // feature id the popup is hovering, or null
+  let state            = Core.effectiveState(settings, { comparing });
   let sessionBlocked   = 0;
   let observer         = null;
   let insightHTML      = '';
@@ -49,7 +49,7 @@
   }
 
   function countNewElements() {
-    if (!isEnabled) return;
+    if (!state.hideShorts) return;
     let newCount = 0;
     for (const sel of SELECTORS) {
       try {
@@ -87,6 +87,11 @@
 
   // ── Grid density ──────────────────────────────────────
 
+  function removeGridStyle() {
+    const el = document.getElementById(GRID_STYLE_ID);
+    if (el) el.remove();
+  }
+
   function applyGridStyle(n) {
     let el = document.getElementById(GRID_STYLE_ID);
     if (!el) {
@@ -94,16 +99,19 @@
       el.id = GRID_STYLE_ID;
       (document.head || document.documentElement).appendChild(el);
     }
-    el.textContent = Core.buildGridCSS(n);
+    const css = Core.buildGridCSS(n);
+    if (el.textContent !== css) el.textContent = css;
   }
 
   // YouTube stamps skeleton rows at its own row size; keep its row count but use ours.
   function syncGhostCards() {
+    const columns = state.gridColumns;
     document.querySelectorAll('ytd-rich-grid-renderer ytd-ghost-grid-renderer:not([is-shorts]) .ghost-grid').forEach(grid => {
       const cards  = grid.querySelectorAll(`.ghost-card:not(.${GHOST_CLONE})`);
       const clones = grid.querySelectorAll(`.${GHOST_CLONE}`);
       const perRow = Number(grid.closest('ytd-ghost-grid-renderer').getAttribute('items-per-row')) || cards.length || 1;
-      const target = Math.ceil(cards.length / perRow) * gridColumns;
+      // Grid off: no target, so every skeleton card is back and clones go.
+      const target = columns === null ? cards.length : Math.ceil(cards.length / perRow) * columns;
       const extra  = Math.max(0, target - cards.length);
       cards.forEach((card, i) => card.classList.toggle(GHOST_HIDDEN, i >= target));
       for (let i = clones.length; i < extra; i++) {
@@ -125,7 +133,8 @@
         el.id = THUMB_STYLE_ID;
         (document.head || document.documentElement).appendChild(el);
       }
-      el.textContent = `a.ytLockupViewModelContentImage { display: none !important; }`;
+      const css = 'a.ytLockupViewModelContentImage { display: none !important; }';
+      if (el.textContent !== css) el.textContent = css;
       injectDurations();
     } else {
       if (el) el.remove();
@@ -179,15 +188,16 @@
       padding: 10px var(--ytd-rich-grid-gutter-margin, 24px);
       font-family: -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
       font-size: 12px;
-      color: #aaaaaa;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      color: var(--yt-sys-color-baseline--text-secondary, #aaaaaa);
+      border-bottom: 1px solid var(--yt-sys-color-baseline--outline, rgba(255,255,255,0.1));
       margin-bottom: 4px;
       box-sizing: border-box;
       flex-wrap: wrap;
       row-gap: 8px;
     }
+    #byte-insight:empty { display: none; }
     .byte-insight-summary { white-space: nowrap; flex-shrink: 0; }
-    .byte-insight-summary strong { color: #ffffff; font-weight: 600; }
+    .byte-insight-summary strong { color: var(--yt-sys-color-baseline--text-primary, #ffffff); font-weight: 600; }
     .byte-insight-sep { margin: 0 5px; opacity: 0.35; }
     .byte-insight-chips {
       display: flex;
@@ -207,6 +217,14 @@
       transition: opacity 120ms ease;
     }
     .byte-chip:hover { opacity: 1; }
+    .byte-chip-loop {
+      opacity: 1;
+      padding: 2px 8px 2px 2px;
+      border-radius: 999px;
+      background: var(--byte-accent);
+      color: var(--byte-on-accent);
+    }
+    .byte-chip-loop .byte-chip-count { color: var(--byte-on-accent); }
     .byte-chip img,
     .byte-chip-avatar-ph {
       width: 26px;
@@ -216,18 +234,18 @@
       flex-shrink: 0;
     }
     .byte-chip-avatar-ph {
-      background: #2e2e2e;
+      background: var(--yt-sys-color-baseline--additive-background, #2e2e2e);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 11px;
-      color: #fff;
+      color: var(--yt-sys-color-baseline--text-primary, #fff);
       font-weight: 600;
     }
     .byte-chip-count {
       font-size: 11px;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--yt-sys-color-baseline--text-primary, #ffffff);
       line-height: 1;
     }
     .byte-chip::after {
@@ -266,7 +284,7 @@
     const map = new Map();
     document.querySelectorAll('ytd-rich-item-renderer').forEach(card => {
       if (card.querySelector('ytm-shorts-lockup-view-model')) return;
-      if (hidePromosEnabled && card.closest(PROMO_SELECTORS)) return;
+      if (state.hidePromos && card.closest(PROMO_SELECTORS)) return;
       const channelLink = card.querySelector('a[href^="/@"]');
       if (!channelLink) return;
       const href = channelLink.getAttribute('href').split('?')[0];
@@ -283,8 +301,7 @@
     // Only show on pages that have the rich grid (homepage, subscriptions).
     const contentsEl = document.querySelector('ytd-rich-grid-renderer #contents');
     if (!contentsEl) {
-      const existing = document.getElementById(INSIGHT_BAR_ID);
-      if (existing) existing.remove();
+      removeInsightBar();
       return;
     }
 
@@ -298,15 +315,17 @@
 
     const channels = collectChannelData();
     const total = channels.reduce((sum, ch) => sum + ch.count, 0);
+    const loop = Core.loopStat(channels.map(ch => ch.count));
+    const palette = Core.paletteFor(settings.accent);
 
     let html = '';
     if (total > 0) {
-      const chipsHTML = channels.map(ch => {
+      const chipsHTML = channels.map((ch, i) => {
         const label = escapeAttr(`${ch.name} · ${ch.count} video${ch.count !== 1 ? 's' : ''}`);
         const avatar = ch.avatarSrc
           ? `<img src="${escapeAttr(ch.avatarSrc)}" alt="${escapeAttr(ch.name)}">`
           : `<div class="byte-chip-avatar-ph">${escapeAttr((ch.name[0] || '?').toUpperCase())}</div>`;
-        return `<a href="${escapeAttr(ch.href)}" class="byte-chip" data-byte-tip="${label}">${avatar}<span class="byte-chip-count">${ch.count}</span></a>`;
+        return `<a href="${escapeAttr(ch.href)}" class="byte-chip${loop && i < loop.loopCount ? ' byte-chip-loop' : ''}" data-byte-tip="${label}">${avatar}<span class="byte-chip-count">${ch.count}</span></a>`;
       }).join('');
 
       html = `
@@ -321,8 +340,12 @@
 
     // Writing the bar re-triggers our own MutationObserver. Skip no-op writes or
     // it rebuilds every tick and keeps resetting YouTube's hover previews.
-    if (html === insightHTML) return;
-    insightHTML = html;
+    // The accent is part of the cache key so a colour change re-renders.
+    const key = `${palette.id}|${html}`;
+    if (key === insightHTML) return;
+    insightHTML = key;
+    bar.style.setProperty('--byte-accent', palette.accent);
+    bar.style.setProperty('--byte-on-accent', palette.onAccent);
     bar.innerHTML = html;
   }
 
@@ -337,9 +360,9 @@
     if (observer) return;
     const tick = debounce(() => {
       countNewElements();
-      updateInsightBar();
+      if (state.channelBar) updateInsightBar();
       syncGhostCards();
-      if (hideThumbsEnabled) injectDurations();
+      if (state.hideThumbs) injectDurations();
     }, 120);
     observer = new MutationObserver(tick);
     observer.observe(document.documentElement, { childList: true, subtree: true });
@@ -631,84 +654,109 @@
 
   // ── Lifecycle ─────────────────────────────────────────
 
-  function enable() {
-    injectCSS();
-    applyGridStyle(gridColumns);
-    injectInsightCSS();
-    countNewElements();
-    applyPromoStyle(hidePromosEnabled);
-    updateInsightBar();
-    applyThumbStyle(hideThumbsEnabled);
-    startObserver();
+  // Outline for the feature the popup is hovering. Rewrites only on change.
+  function applyHighlight() {
+    const css = highlight ? Core.buildHighlightCSS(highlight, Core.paletteFor(settings.accent).accent) : '';
+    let el = document.getElementById(HIGHLIGHT_STYLE_ID);
+    if (!css) {
+      if (el) el.remove();
+      return;
+    }
+    if (!el) {
+      el = document.createElement('style');
+      el.id = HIGHLIGHT_STYLE_ID;
+      (document.head || document.documentElement).appendChild(el);
+    }
+    if (el.textContent !== css) el.textContent = css;
   }
 
-  function disable() {
-    removeCSS();
-    stopObserver();
-    applyThumbStyle(false);
-    applyPromoStyle(false);
+  // Applies everything from the effective state. Every step is idempotent, so
+  // this is cheap to call on storage changes and on each navigation.
+  function applyAll() {
+    state = Core.effectiveState(settings, { comparing });
+    miniplayerEnabled = state.miniplayer;
+
+    if (state.hideShorts) injectCSS(); else removeCSS();
+    applyPromoStyle(state.hidePromos);
+    if (state.gridColumns === null) removeGridStyle(); else applyGridStyle(state.gridColumns);
+    applyThumbStyle(state.hideThumbs);
+    applyHighlight();
+
+    if (state.channelBar) {
+      injectInsightCSS();
+      updateInsightBar();
+    } else {
+      removeInsightBar();
+    }
+
+    const visualOn = state.hideShorts || state.hidePromos || state.hideThumbs
+      || state.channelBar || state.gridColumns !== null;
+    if (visualOn) {
+      startObserver();
+      countNewElements();
+      syncGhostCards();
+    } else {
+      stopObserver();
+      syncGhostCards(); // restores skeleton cards
+    }
+  }
+
+  function removeInsightBar() {
     const bar = document.getElementById(INSIGHT_BAR_ID);
     if (bar) bar.remove();
+    insightHTML = '';
   }
 
-  function init() {
-    chrome.storage.local.get([STORAGE.ENABLED, STORAGE.GRID, STORAGE.HIDE_THUMBS, STORAGE.HIDE_PROMOS, STORAGE.MINIPLAYER], data => {
-      const settings    = Core.readSettings(data);
-      isEnabled         = settings.enabled;
-      gridColumns       = settings.gridColumns;
-      hideThumbsEnabled = settings.hideThumbs;
-      hidePromosEnabled = settings.hidePromos;
-      miniplayerEnabled = settings.miniplayer;
-      if (isEnabled) enable();
+  function readAndApply() {
+    chrome.storage.local.get(null, data => {
+      settings = Core.readSettings(data);
+      applyAll();
     });
   }
 
+  function init() {
+    readAndApply();
+  }
+
+  // byte_count changes on every count, so it must not trigger a re-apply.
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    if (Object.keys(changes).some(k => k !== STORAGE.COUNT && k.startsWith('byte_'))) readAndApply();
+  });
+
   // ── YouTube SPA navigation ────────────────────────────
 
-  document.addEventListener('yt-navigate-finish', () => {
-    if (!isEnabled) return;
-    injectCSS();
-    applyGridStyle(gridColumns);
-    countNewElements();
-    updateInsightBar();
-    if (hideThumbsEnabled) injectDurations();
-  });
+  document.addEventListener('yt-navigate-finish', applyAll);
 
   // ── Messages from popup ───────────────────────────────
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === 'GET_STATUS') {
-      sendResponse({ sessionBlocked, isEnabled });
+      const page = location.pathname === '/' ? 'home' : 'other';
+      const channelCounts = page === 'home' ? collectChannelData().map(ch => ch.count) : [];
+      sendResponse({ sessionBlocked, page, channelCounts });
       return;
     }
-    if (msg.type === 'SET_SETTINGS') {
-      isEnabled = msg.enabled;
-      isEnabled ? enable() : disable();
-      sendResponse({ ok: true });
-    }
-    if (msg.type === 'SET_GRID') {
-      gridColumns = msg.columns;
-      applyGridStyle(gridColumns);
-      syncGhostCards();
-      sendResponse({ ok: true });
-    }
-    if (msg.type === 'SET_THUMB') {
-      hideThumbsEnabled = msg.enabled;
-      applyThumbStyle(hideThumbsEnabled);
-      sendResponse({ ok: true });
-    }
-    if (msg.type === 'SET_PROMOS') {
-      hidePromosEnabled = msg.enabled;
-      if (isEnabled) {
-        applyPromoStyle(hidePromosEnabled);
-        updateInsightBar();
+  });
+
+  // The popup holds a port open while it is showing. Hold-to-compare and hover
+  // outlines last only as long as the port; any disconnect resets them.
+  chrome.runtime.onConnect.addListener(port => {
+    if (port.name !== 'byte-popup') return;
+    port.onMessage.addListener(msg => {
+      if (msg.type === 'COMPARE') {
+        comparing = msg.on === true;
+        applyAll();
+      } else if (msg.type === 'HIGHLIGHT') {
+        highlight = typeof msg.feature === 'string' ? msg.feature : null;
+        applyHighlight();
       }
-      sendResponse({ ok: true });
-    }
-    if (msg.type === 'SET_MINIPLAYER') {
-      miniplayerEnabled = msg.enabled;
-      sendResponse({ ok: true });
-    }
+    });
+    port.onDisconnect.addListener(() => {
+      comparing = false;
+      highlight = null;
+      applyAll();
+    });
   });
 
   init();

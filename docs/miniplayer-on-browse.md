@@ -36,11 +36,11 @@ DOM events work between the content script and the page, so `.click()` from the 
 
 ## Toggle: "Mini player on browse" (on by default)
 Copy the existing `hide_promos` pattern:
-- `content.js`: `STORAGE.MINIPLAYER = 'byte_miniplayer'`, `let miniplayerEnabled = true`, read it in `init()` (`!== false`), and handle a `SET_MINIPLAYER` message.
+- `content.js`: `STORAGE.MINIPLAYER = 'byte_miniplayer'`, `let miniplayerEnabled = true`, read it in `init()` (`!== false`). (Since 1.2.0 settings flow through `Core.readSettings` and `applyAll()` on `storage.onChanged`; there are no `SET_*` messages.)
 - `background.js`: set `byte_miniplayer: true` on install.
 - `popup/popup.html`: a new toggle row with title "Mini player on browse", subtitle "Keep the video playing when you search or open a channel", `#toggle-miniplayer`.
 - `popup/popup.js`: load, save and send the setting, like the `togglePromos` block.
-- Works independently of the main "Block Shorts" switch (`isEnabled`).
+- Works independently of the other toggles (there is no master switch since 1.2.0).
 
 Bump `manifest.json` to `1.1.0`.
 

@@ -21,7 +21,7 @@
     paused:      ['BYTE is paused', 'Your YouTube is back to normal.'],
     outside:     ['Nothing to measure here', 'Open YouTube to see what your feed is made of.'],
     notHome:     ['Nothing to measure here', 'Open your YouTube home page to see which channels fill your feed.'],
-    emptyHome:   ['Nothing to measure here', 'No videos have loaded on your home page yet.'],
+    emptyHome:   ['Nothing to measure here', 'BYTE found no videos on this page yet.'],
     unreachable: ['Nothing to measure here', 'Reload this YouTube tab so BYTE can see it.'],
     loading:     ['', ''],
   };
@@ -137,8 +137,12 @@
   }
 
   // Write to storage and show the change right away.
+  // Latest value this popup wrote per key, until its echo comes back. Echoes of
+  // older writes (rapid stepper clicks) must not overwrite the newer local value.
+  const written = {};
   function save(changes) {
     update(changes);
+    Object.assign(written, changes);
     if (store) store.set(changes);
   }
 
@@ -224,6 +228,7 @@
 
   function showPreview() {
     clearTimeout(backTimer);
+    winEl.classList.remove('returning');
     previewKey = stateKey();
     captionEl.textContent = captions[hovered] || '';
     wireframe.preview(hovered, Core.effectiveState(settings));
@@ -233,7 +238,7 @@
   function showMirror() {
     clearTimeout(backTimer);
     wireframe.stop();
-    winEl.classList.remove('show-pic');
+    winEl.classList.remove('show-pic', 'returning');
   }
 
   function hoverRow(id) {
@@ -248,6 +253,7 @@
     if (holding || compareBtn.disabled) return;
     holding = true;
     clearTimeout(backTimer);
+    winEl.classList.remove('returning');
     send({ type: 'COMPARE', on: true });
     const parts = Core.compareSummary(settings);
     summaryEl.textContent = parts.length
@@ -270,6 +276,7 @@
     // Show BYTE's version coming back, then return to the mirror.
     captionEl.textContent = 'With BYTE';
     wireframe.render(Core.effectiveState(settings));
+    winEl.classList.add('returning'); // keep the button while "With BYTE" shows
     backTimer = setTimeout(showMirror, BACK_TO_MIRROR_MS);
   }
 
@@ -375,7 +382,13 @@
   chrome.storage.onChanged?.addListener((changes, area) => {
     if (area !== 'local') return;
     const values = {};
-    for (const [k, { newValue }] of Object.entries(changes)) values[k] = newValue;
-    update(values);
+    for (const [k, { newValue }] of Object.entries(changes)) {
+      if (k in written) {
+        if (written[k] === newValue) delete written[k];
+        continue; // our own write, already showing
+      }
+      values[k] = newValue;
+    }
+    if (Object.keys(values).length) update(values);
   });
 })();

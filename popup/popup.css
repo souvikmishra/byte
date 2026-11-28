@@ -261,7 +261,7 @@ body.paused #pause .icon-play { display: block; }
 #compare:hover:not(:disabled) { background: var(--wash); }
 #compare:disabled { opacity: .45; cursor: default; box-shadow: none; }
 /* The caption gets the full width while a row is previewed. */
-#window.show-pic:not(.holding) #compare { opacity: 0; pointer-events: none; }
+#window.show-pic:not(.holding):not(.returning) #compare { opacity: 0; pointer-events: none; }
 #window.holding #compare {
   opacity: 0;
   background: var(--ink);

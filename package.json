@@ -6,7 +6,8 @@
     "prelint": "node scripts/check-node.cjs",
     "lint": "web-ext lint",
     "test": "node --test \"test/unit/**/*.test.js\"",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "screenshots": "node scripts/screenshot-popup.js"
   },
   "devDependencies": {
     "@playwright/test": "1.65.1",

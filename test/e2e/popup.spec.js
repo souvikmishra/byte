@@ -169,9 +169,9 @@ test.describe('Popup', () => {
   });
 
   test('Channel bar switch removes the bar', async ({ page, extension }) => {
-    await yt.gotoYouTube(page, GRID_PAGE);
+    await yt.gotoYouTube(page, yt.CHANNEL_GRID_PAGE);
     const bar = page.locator('#byte-insight');
-    await expect(bar).toBeAttached({ timeout: 30_000 });
+    await expect(bar).toBeVisible({ timeout: 30_000 });
 
     const popup = await extension.openPopup(page);
     await popup.locator('#toggle-channelBar').click();
@@ -179,7 +179,7 @@ test.describe('Popup', () => {
     expect((await extension.storageIn(popup)).byte_channel_bar).toBe(false);
 
     await popup.locator('#toggle-channelBar').click();
-    await expect(bar).toBeAttached({ timeout: 30_000 });
+    await expect(bar).toBeVisible({ timeout: 30_000 });
     expect((await extension.storageIn(popup)).byte_channel_bar).toBe(true);
   });
 });

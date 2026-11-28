@@ -93,7 +93,8 @@ test('pause: Shorts come back, and stay back after navigating and reloading', as
   await yt.gotoSearch(page, SEARCH_WITH_SHORTS);
   await expect.poll(() => yt.visibleShortsLinkCount(page)).toBeGreaterThan(0);
   await expect(page.locator('style#byte-grid-style')).not.toBeAttached();
-  await yt.gotoSearch(page, 'dog');                    // in-app navigation
+  await yt.search(page, 'dog');                        // in-app navigation
+  await expect(page).toHaveURL(/search_query=dog/);
   await expect.poll(() => yt.visibleShortsLinkCount(page)).toBeGreaterThan(0);
   await page.reload();
   await expect.poll(() => yt.visibleShortsLinkCount(page)).toBeGreaterThan(0);

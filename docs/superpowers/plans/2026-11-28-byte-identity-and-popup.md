@@ -177,7 +177,7 @@ test('loopStat: empty feed', () => assert.equal(Core.loopStat([]), null));
   - `GET_STATUS` adds `page` and `channelCounts`, from `collectChannelData()`.
   - Keep the `insightHTML` no-op check, and include the accent in the cached HTML so a colour change re-renders.
 - [ ] **Step 4: Write and run the e2e test** in `grid-and-watch.spec.js` (title `channel bar: loop chip in the accent, switch removes it`):
-  - On `/@YouTube/videos`, `#byte-insight .byte-chip-loop` has count ≥ 1.
+  - On `CHANNEL_GRID_PAGE` (`/podcasts`; `/@YouTube/videos` cards have no per-card channel links), `#byte-insight .byte-chip-loop` has count ≥ 1.
   - `setStorage({ byte_channel_bar: false })` → `#byte-insight` is not attached.
   - **Control:** with `true`, it's attached again.
   - Run `npx playwright test grid-and-watch -g "channel bar"`. Expected: PASS.

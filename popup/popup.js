@@ -395,7 +395,12 @@
     // A failed read leaves the defaults showing; reading lastError keeps it quiet.
     const failed = chrome.runtime.lastError;
     loaded = true;
-    update(failed ? {} : all || {});
+    // Keep values this popup wrote before the read returned; the read may predate them.
+    const fresh = {};
+    for (const [k, v] of Object.entries(failed ? {} : all || {})) {
+      if (!(k in written)) fresh[k] = v;
+    }
+    update(fresh);
     ready();
   });
   chrome.storage.onChanged?.addListener((changes, area) => {

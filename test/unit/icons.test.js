@@ -47,3 +47,11 @@ test('committed icons match lib/mark.js', () => {
     assert.deepEqual(Array.from(png.rgba), Array.from(want), `icon${size}.png`);
   }
 });
+
+test('committed brand SVGs match lib/mark.js', () => {
+  const { brandAssets } = require('../../scripts/generate-icons.js');
+  const dir = path.join(__dirname, '..', '..', 'design', 'brand');
+  const expected = brandAssets();
+  assert.deepEqual(fs.readdirSync(dir).filter(f => f.endsWith('.svg')).sort(), Object.keys(expected).sort());
+  for (const [name, svg] of Object.entries(expected)) assert.equal(fs.readFileSync(path.join(dir, name), 'utf8'), svg, name);
+});

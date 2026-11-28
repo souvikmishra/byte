@@ -1,6 +1,6 @@
 'use strict';
-// Regenerates icons/*.png from lib/mark.js (Node stdlib only).
-// Usage: node scripts/generate-icons.js
+// Regenerates icons/*.png and the brand SVGs in design/brand/ from lib/mark.js
+// (Node stdlib only). Usage: node scripts/generate-icons.js
 const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
@@ -35,9 +35,28 @@ function encodePng(width, height, rgba) {
   ]);
 }
 
-const accent = Core.paletteFor('lime').accent;
-const outDir = path.join(__dirname, '..', 'icons');
-for (const size of [16, 32, 48, 128]) {
-  const rgba = size === 128 ? Mark.storeIconPixels(accent) : Mark.markPixels(size, accent);
-  fs.writeFileSync(path.join(outDir, `icon${size}.png`), encodePng(size, size, rgba));
+const ROOT = path.join(__dirname, '..');
+
+// design/brand/: the mark in every accent, and the wordmark in ink and white.
+// `require`d by test/unit/icons.test.js to check the committed files.
+function brandAssets() {
+  const files = {};
+  for (const p of Core.PALETTES) files[`mark-${p.id}.svg`] = Mark.markSVG(128, p.accent) + '\n';
+  files['wordmark-ink.svg'] = Mark.wordmarkSVG(48, '#141414') + '\n';
+  files['wordmark-white.svg'] = Mark.wordmarkSVG(48, '#FFFFFF') + '\n';
+  return files;
 }
+
+function main() {
+  const accent = Core.paletteFor('lime').accent;
+  for (const size of [16, 32, 48, 128]) {
+    const rgba = size === 128 ? Mark.storeIconPixels(accent) : Mark.markPixels(size, accent);
+    fs.writeFileSync(path.join(ROOT, 'icons', `icon${size}.png`), encodePng(size, size, rgba));
+  }
+  const brandDir = path.join(ROOT, 'design', 'brand');
+  fs.mkdirSync(brandDir, { recursive: true });
+  for (const [name, svg] of Object.entries(brandAssets())) fs.writeFileSync(path.join(brandDir, name), svg);
+}
+
+if (require.main === module) main();
+module.exports = { brandAssets };

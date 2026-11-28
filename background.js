@@ -22,6 +22,7 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
     byte_paused: false,
     byte_channel_bar: true,
     byte_accent: 'lime',
+    byte_theme: 'system',
     byte_count: 0,
     byte_grid_columns: 3,
     byte_hide_thumbs: false,

@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const Core = require('../../lib/core.js');
 
 test('readSettings defaults', () => {
-  assert.deepEqual(Core.readSettings({}), { hideShorts: true, paused: false, channelBar: true, accent: 'lime',
+  assert.deepEqual(Core.readSettings({}), { hideShorts: true, paused: false, channelBar: true, accent: 'lime', theme: 'system',
     gridColumns: 3, hideThumbs: false, hidePromos: true, miniplayer: true });
   assert.deepEqual(Core.readSettings(undefined), Core.readSettings({}));
 });
@@ -16,18 +16,19 @@ test('readSettings: stored values win over defaults', () => {
     [Core.STORAGE.PAUSED]: true,
     [Core.STORAGE.CHANNEL_BAR]: false,
     [Core.STORAGE.ACCENT]: 'violet',
+    [Core.STORAGE.THEME]: 'dark',
     [Core.STORAGE.GRID]: 6,
     [Core.STORAGE.HIDE_THUMBS]: true,
     [Core.STORAGE.HIDE_PROMOS]: false,
     [Core.STORAGE.MINIPLAYER]: false,
   });
-  assert.deepEqual(s, { hideShorts: false, paused: true, channelBar: false, accent: 'violet',
+  assert.deepEqual(s, { hideShorts: false, paused: true, channelBar: false, accent: 'violet', theme: 'dark',
     gridColumns: 6, hideThumbs: true, hidePromos: false, miniplayer: false });
 });
 
 test('readSettings ignores corrupt values', () => {
-  const s = Core.readSettings({ byte_accent: 'pink', byte_grid_columns: 'x', byte_enabled: false });
-  assert.equal(s.accent, 'lime'); assert.equal(s.gridColumns, 3); assert.equal(s.hideShorts, true);
+  const s = Core.readSettings({ byte_accent: 'pink', byte_theme: 'neon', byte_grid_columns: 'x', byte_enabled: false });
+  assert.equal(s.accent, 'lime'); assert.equal(s.theme, 'system'); assert.equal(s.gridColumns, 3); assert.equal(s.hideShorts, true);
 });
 
 test('readSettings: only an explicit false turns default-on settings off', () => {

@@ -5,7 +5,7 @@ A Chrome + Firefox (MV3) extension that cleans up YouTube: it hides Shorts, sets
 ## Layout
 - `manifest.json`: MV3 manifest. The `browser_specific_settings.gecko` section is for Firefox; keep both browsers working.
 - `content.js`: everything that runs on the page. One IIFE, injected at `document_start` on `*.youtube.com`, after `lib/core.js`.
-- `lib/core.js`: pure logic (selector lists, settings defaults, CSS builders) shared by `content.js` and the unit tests.
+- `lib/core.js`: pure logic (selector lists, settings defaults, CSS builders) shared by `content.js`, the popup, `background.js` and the unit tests.
 - `lib/mark.js`: bite-mark and bitten-E wordmark geometry; shared by the popup, `background.js` and the icon generator. Ships.
 - `background.js`: service worker; sets storage defaults on install and paints the toolbar icon in the chosen accent (`chrome.action.setIcon`). Loads `lib/core.js` + `lib/mark.js` (`importScripts` in Chrome, `background.scripts` in Firefox).
 - `popup/`: the toolbar popup (`popup.html/.css/.js`); `popup/wireframe.js` draws its lo-fi YouTube picture and loads before `popup.js`.

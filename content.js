@@ -188,15 +188,16 @@
       padding: 10px var(--ytd-rich-grid-gutter-margin, 24px);
       font-family: -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
       font-size: 12px;
-      color: #aaaaaa;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      color: var(--yt-sys-color-baseline--text-secondary, #aaaaaa);
+      border-bottom: 1px solid var(--yt-sys-color-baseline--outline, rgba(255,255,255,0.1));
       margin-bottom: 4px;
       box-sizing: border-box;
       flex-wrap: wrap;
       row-gap: 8px;
     }
+    #byte-insight:empty { display: none; }
     .byte-insight-summary { white-space: nowrap; flex-shrink: 0; }
-    .byte-insight-summary strong { color: #ffffff; font-weight: 600; }
+    .byte-insight-summary strong { color: var(--yt-sys-color-baseline--text-primary, #ffffff); font-weight: 600; }
     .byte-insight-sep { margin: 0 5px; opacity: 0.35; }
     .byte-insight-chips {
       display: flex;
@@ -233,18 +234,18 @@
       flex-shrink: 0;
     }
     .byte-chip-avatar-ph {
-      background: #2e2e2e;
+      background: var(--yt-sys-color-baseline--additive-background, #2e2e2e);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 11px;
-      color: #fff;
+      color: var(--yt-sys-color-baseline--text-primary, #fff);
       font-weight: 600;
     }
     .byte-chip-count {
       font-size: 11px;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--yt-sys-color-baseline--text-primary, #ffffff);
       line-height: 1;
     }
     .byte-chip::after {
@@ -743,10 +744,13 @@
   chrome.runtime.onConnect.addListener(port => {
     if (port.name !== 'byte-popup') return;
     port.onMessage.addListener(msg => {
-      if (msg.type === 'COMPARE') comparing = msg.on === true;
-      else if (msg.type === 'HIGHLIGHT') highlight = typeof msg.feature === 'string' ? msg.feature : null;
-      else return;
-      applyAll();
+      if (msg.type === 'COMPARE') {
+        comparing = msg.on === true;
+        applyAll();
+      } else if (msg.type === 'HIGHLIGHT') {
+        highlight = typeof msg.feature === 'string' ? msg.feature : null;
+        applyHighlight();
+      }
     });
     port.onDisconnect.addListener(() => {
       comparing = false;

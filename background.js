@@ -17,7 +17,7 @@ async function syncToolbarIcon() {
 
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason !== 'install') { syncToolbarIcon(); return; }
-  Promise.resolve(chrome.storage.local.set({
+  chrome.storage.local.set({
     byte_hide_shorts: true,
     byte_paused: false,
     byte_channel_bar: true,
@@ -27,9 +27,13 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
     byte_hide_thumbs: false,
     byte_hide_promos: true,
     byte_miniplayer: true,
-  })).then(syncToolbarIcon);
+  });
 });
 
+// onInstalled and onStartup don't fire when the extension is re-enabled or the
+// worker restarts, so draw the icon every time this script loads. On a fresh
+// install the accent key is absent, so this draws the default accent.
+syncToolbarIcon();
 chrome.runtime.onStartup.addListener(syncToolbarIcon);
 
 chrome.storage.onChanged.addListener((changes, area) => {

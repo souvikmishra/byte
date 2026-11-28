@@ -72,6 +72,22 @@ test('background runs in Chrome (service_worker) and Firefox (scripts)', () => {
   assert.deepEqual(manifest.background.scripts, ['lib/core.js', 'lib/mark.js', manifest.background.service_worker]);
 });
 
+test('toolbar icon is drawn when background.js loads, with no event firing', async () => {
+  // Re-enabling the extension or restarting the worker fires neither onInstalled nor onStartup.
+  const calls = [];
+  class FakeImageData { constructor(data, w, h) { this.data = data; this.width = w; this.height = h; } }
+  const chrome = {
+    runtime: { onInstalled: { addListener() {} }, onStartup: { addListener() {} } },
+    storage: { local: { get: async () => ({ byte_accent: 'cobalt' }), set() {} }, onChanged: { addListener() {} } },
+    action: { setIcon: async arg => { calls.push(arg); } },
+  };
+  const ctx = vm.createContext({ chrome, ImageData: FakeImageData, console });
+  ctx.globalThis = ctx;
+  for (const f of ['lib/core.js', 'lib/mark.js', 'background.js']) vm.runInContext(read(f), ctx, { filename: f });
+  await new Promise(r => setImmediate(r));
+  assert.equal(calls.length, 1);
+});
+
 test('toolbar icon uses the chosen accent', async () => {
   const calls = [];
   const listeners = {};
@@ -87,6 +103,8 @@ test('toolbar icon uses the chosen accent', async () => {
   const ctx = vm.createContext({ chrome, ImageData: FakeImageData, console });
   ctx.globalThis = ctx;
   for (const f of ['lib/core.js', 'lib/mark.js', 'background.js']) vm.runInContext(read(f), ctx, { filename: f });
+  await new Promise(r => setImmediate(r));
+  calls.length = 0; // the load-time draw is covered by its own test
   await listeners.startup();
   assert.equal(calls.length, 1);
   const sizes = calls[0].imageData;

@@ -9,8 +9,9 @@ A Chrome + Firefox (MV3) extension that cleans up YouTube: it hides Shorts, sets
 - `lib/mark.js`: bite-mark and bitten-E wordmark geometry; shared by the popup, `background.js` and the icon generator. Ships.
 - `background.js`: service worker; sets storage defaults on install and paints the toolbar icon in the chosen accent (`chrome.action.setIcon`). Loads `lib/core.js` + `lib/mark.js` (`importScripts` in Chrome, `background.scripts` in Firefox).
 - `popup/`: the toolbar popup (`popup.html/.css/.js`); `popup/wireframe.js` draws its lo-fi YouTube picture and loads before `popup.js`.
-- `design/ui-icons/` + `icons.yaml`: sources and built SVGs for the popup's UI icons (draw-icons skill). Dev-only, ignored by web-ext.
-- `scripts/generate-icons.js`: regenerates `icons/*.png` from `lib/mark.js`; Node stdlib only.
+- `design/`: the design system, dev-only (ignored by web-ext). `design/README.md` indexes it: brand rules, palettes and tokens, `brand/` (mark and wordmark SVGs), `ui-icons/` (the popup's pixel icons; DNA in the root `icons.yaml`, draw-icons skill), and `screenshots/popup/`. Put new design assets here, not elsewhere.
+- `scripts/generate-icons.js`: regenerates `icons/*.png` and `design/brand/*.svg` from `lib/mark.js`; Node stdlib only. `npm test` checks the committed files match.
+- `scripts/screenshot-popup.js` (`npm run screenshots`): re-shoots `design/screenshots/popup/` with a stubbed `chrome` and sample data. Re-run it after visible popup changes.
 - `docs/`: task specs. Read the relevant one before starting a task.
 - `test/unit/`, `test/e2e/`, `package.json`, `playwright.config.js`, `web-ext-config.cjs`: dev-only tooling.
 

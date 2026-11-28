@@ -28,6 +28,7 @@ test.describe('Popup', () => {
     await expect(page.locator('#grid-dec')).toBeDisabled();
     await expect(page.locator('[data-accent="lime"]')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('[data-accent="cobalt"]')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#theme')).toHaveValue('system');
     await expect(page.locator('#pause')).toHaveAttribute('aria-pressed', 'false');
     await expect(page.locator('#pause')).toHaveAttribute('aria-label', 'Pause BYTE');
     await expect(page.locator('body')).not.toHaveClass(/\bpaused\b/);
@@ -94,6 +95,25 @@ test.describe('Popup', () => {
     await page.reload();
     await expect(page.locator('[data-accent="cobalt"]')).toHaveAttribute('aria-pressed', 'true');
     expect(await rootAccent(page)).toBe('#3D5AFE');
+  });
+
+  test('theme select saves and applies', async ({ page, extension }) => {
+    await page.goto(extension.popupUrl);
+    await expect(page.locator('#shorts-count')).not.toHaveText('—');
+    const root = page.locator('html');
+    await expect(root).not.toHaveAttribute('data-theme', /.*/);
+
+    await page.locator('#theme').selectOption('dark');
+    await expect.poll(async () => (await extension.storageIn(page)).byte_theme).toBe('dark');
+    await expect(root).toHaveAttribute('data-theme', 'dark');
+
+    await page.reload();
+    await expect(page.locator('#theme')).toHaveValue('dark');
+    await expect(root).toHaveAttribute('data-theme', 'dark');
+
+    await page.locator('#theme').selectOption('system');
+    await expect.poll(async () => (await extension.storageIn(page)).byte_theme).toBe('system');
+    await expect(root).not.toHaveAttribute('data-theme', /.*/);
   });
 
   test('Hide thumbnails switch hides thumbnails and adds durations', async ({ page, extension }) => {

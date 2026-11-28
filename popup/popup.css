@@ -22,41 +22,30 @@
   --accent: #C6F135;
   --on-accent: #141414;
 
-  --paper: #ffffff;
-  --ink: #18181b;
-  --ink2: #52525b;
-  --ink3: #a1a1aa;
-  --line: #e4e4e7;
-  --wash: #f4f4f5;
-  --bar: #d4d4d8;
-  --off: #d4d4d8;
-  --knob: #ffffff;
+  /* Each theme token is written once as light-dark(light, dark). The scheme
+     is the OS's unless popup.js sets data-theme (from the Theme row); it also
+     decides the look of native controls: the select's list and scrollbars. */
+  color-scheme: light dark;
+  --paper: light-dark(#ffffff, #161618);
+  --ink: light-dark(#18181b, #f4f4f5);
+  --ink2: light-dark(#52525b, #a1a1aa);
+  --ink3: light-dark(#a1a1aa, #71717a);
+  --line: light-dark(#e4e4e7, #2a2a2e);
+  --wash: light-dark(#f4f4f5, #202024);
+  --bar: light-dark(#d4d4d8, #3a3a40);
+  --off: light-dark(#d4d4d8, #3a3a40);
+  --knob: light-dark(#ffffff, #e4e4e7);
   /* Wireframe greys, lightest to darkest. */
-  --b1: #e4e4e7;
-  --b2: #d4d4d8;
-  --b3: #c4c4c9;
+  --b1: light-dark(#e4e4e7, #2a2a2e);
+  --b2: light-dark(#d4d4d8, #34343a);
+  --b3: light-dark(#c4c4c9, #44444c);
 
   --ease: cubic-bezier(.2, .8, .2, 1);
   --snap: 150ms;
   --tint: 350ms;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #161618;
-    --ink: #f4f4f5;
-    --ink2: #a1a1aa;
-    --ink3: #71717a;
-    --line: #2a2a2e;
-    --wash: #202024;
-    --bar: #3a3a40;
-    --off: #3a3a40;
-    --knob: #e4e4e7;
-    --b1: #2a2a2e;
-    --b2: #34343a;
-    --b3: #44444c;
-  }
-}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 /* Set by popup.js once the stored colour is painted, so opening the popup
    never animates from lime to the saved colour. */
@@ -398,7 +387,6 @@ body.paused #pause .icon-play { display: block; }
 /* ── Setting rows ────────────────────────────────────── */
 
 .rows {
-  padding-bottom: 6px;
   transition: opacity 200ms var(--ease);
 }
 body.paused .rows { opacity: .4; }
@@ -498,22 +486,16 @@ label.row { cursor: pointer; }
 
 /* ── Footer ──────────────────────────────────────────── */
 
-/* Count and link share the first line (as in the mockups); the colour dots
-   get their own, so nothing overflows 320px however large the count gets. */
 .foot {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas: "count suggest" "accents accents";
+  display: flex;
   align-items: center;
-  row-gap: 6px;
+  justify-content: space-between;
+  gap: 8px;
   padding: 10px 12px 10px 16px;
   border-top: 1px solid var(--line);
   color: var(--ink3);
   font-size: 11px;
 }
-.count { grid-area: count; }
-#suggest { grid-area: suggest; }
-.accents { grid-area: accents; }
 
 .count { white-space: nowrap; }
 #shorts-count {
@@ -522,10 +504,11 @@ label.row { cursor: pointer; }
   font-variant-numeric: tabular-nums;
 }
 
+/* Colour row: dots sit on the same right edge as the switches. */
 .accents {
   display: flex;
   gap: 4px;
-  margin-left: -5px; /* line the first dot up with the text above */
+  margin-right: -5px; /* the 20px hit area holds a 10px dot: line the last dot up with the switches */
 }
 .accent-dot {
   width: 20px;
@@ -552,6 +535,27 @@ label.row { cursor: pointer; }
 }
 .accent-dot:focus-visible { outline-offset: 0; border-radius: 50%; }
 
+/* Theme select: native element (keyboard, list, a11y) with the stepper's look. */
+#theme {
+  flex: none;
+  appearance: none;
+  height: 22px;
+  padding: 0 22px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='%23888' stroke-width='1.5'%3E%3Cpath d='M2 3.5L5 6.5L8 3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color var(--snap);
+}
+#theme:hover { background-color: var(--wash); }
+
 #suggest {
   display: flex;
   align-items: center;
@@ -568,3 +572,5 @@ label.row { cursor: pointer; }
     transition-duration: 0s !important;
   }
 }
+
+.prefs { padding-bottom: 6px; }

@@ -89,6 +89,7 @@
 
   rowsEl.append(...Core.FEATURES.map(buildRow));
 
+  // Colour and Theme rows. Plain divs, not labels: a click on the text must not pick a dot.
   const dots = Core.PALETTES.map(p => {
     const dot = el('button', {
       type: 'button', className: 'accent-dot', title: p.name,
@@ -97,7 +98,19 @@
     dot.style.setProperty('--dot', p.accent);
     return dot;
   });
-  $('accents').append(...dots);
+  const THEME_LABELS = { system: 'System', light: 'Light', dark: 'Dark' };
+  const themeSelect = el('select', { id: 'theme', 'aria-labelledby': 'label-theme' },
+    Core.THEMES.map(t => el('option', { value: t, textContent: THEME_LABELS[t] })));
+  $('prefs').append(
+    el('div', { className: 'row' }, [
+      el('span', { className: 'label', id: 'label-accent', textContent: 'Colour' }),
+      el('span', { id: 'accents', className: 'accents', role: 'group', 'aria-labelledby': 'label-accent' }, dots),
+    ]),
+    el('div', { className: 'row' }, [
+      el('span', { className: 'label', id: 'label-theme', textContent: 'Theme' }),
+      themeSelect,
+    ]),
+  );
 
   // ── Render ────────────────────────────────────────────
 
@@ -123,6 +136,11 @@
     // else; the attribute keeps the markup itself in the chosen colour.
     $('mark').firstElementChild?.setAttribute('fill', palette.accent);
     for (const dot of dots) dot.setAttribute('aria-pressed', String(dot.dataset.accent === palette.id));
+
+    // system follows the OS: no attribute, so the CSS media query decides.
+    if (settings.theme === 'system') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', settings.theme);
+    themeSelect.value = settings.theme;
 
     const count = data[S.COUNT];
     if (loaded) countEl.textContent = (Number.isFinite(count) ? count : 0).toLocaleString();
@@ -156,6 +174,7 @@
   });
   gridInc.addEventListener('click', () => save({ [S.GRID]: settings.gridColumns + 1 }));
   pauseBtn.addEventListener('click', () => save({ [S.PAUSED]: !settings.paused }));
+  themeSelect.addEventListener('change', () => save({ [S.THEME]: themeSelect.value }));
   for (const dot of dots) dot.addEventListener('click', () => save({ [S.ACCENT]: dot.dataset.accent }));
 
   // ── Window: mirror, live picture, hold to compare ─────

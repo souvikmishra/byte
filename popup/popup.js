@@ -158,9 +158,13 @@
   // Latest value this popup wrote per key, until its echo comes back. Echoes of
   // older writes (rapid stepper clicks) must not overwrite the newer local value.
   const written = {};
+  // Keys saved before the first read returned. Kept apart from `written`, whose
+  // entries can clear (echo arrives) before that read does, which may predate them.
+  const savedBeforeLoad = new Set();
   function save(changes) {
     update(changes);
     Object.assign(written, changes);
+    if (!loaded) Object.keys(changes).forEach(k => savedBeforeLoad.add(k));
     if (store) store.set(changes);
   }
 
@@ -398,7 +402,7 @@
     // Keep values this popup wrote before the read returned; the read may predate them.
     const fresh = {};
     for (const [k, v] of Object.entries(failed ? {} : all || {})) {
-      if (!(k in written)) fresh[k] = v;
+      if (!(k in written) && !savedBeforeLoad.has(k)) fresh[k] = v;
     }
     update(fresh);
     ready();

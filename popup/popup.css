@@ -273,6 +273,7 @@ body.paused #pause .icon-play { display: block; }
 
 .wf {
   --cols: 3;
+  --wf-gap: min(5px, 40px / var(--cols));
   --hi: var(--ink);
   position: relative;
   flex: none;
@@ -309,12 +310,13 @@ body.paused #pause .icon-play { display: block; }
 }
 .wf-chan b { flex: 1; border-radius: 2px 2px 1px 1px; background: var(--b3); }
 .wf-chan b.top { background: var(--accent); }
-.wf-grid { display: flex; flex: none; flex-wrap: wrap; gap: 5px; }
+/* Gaps shrink as columns grow, so large counts still draw as cards. */
+.wf-grid { display: flex; flex: none; flex-wrap: wrap; gap: var(--wf-gap); }
 .wf-card {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  width: calc((100% - (var(--cols) - 1) * 5px) / var(--cols));
+  width: calc((100% - (var(--cols) - 1) * var(--wf-gap)) / var(--cols));
   outline: 1.5px dashed transparent;
   outline-offset: 1px;
   transition: width 450ms var(--ease), outline-color 200ms;

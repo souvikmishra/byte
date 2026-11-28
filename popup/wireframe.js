@@ -6,14 +6,19 @@
 //
 //   ByteWireframe.create(el) -> { render(state), preview(featureId, state), stop() }
 //
-// `state` has the shape of ByteCore.effectiveState().
+// `state` has the shape of ByteCore.effectiveState(). view/previewViews are
+// pure and exported for the unit tests, the same way lib/*.js load in Node.
 (function (root) {
   // The channel strip's sample shape (videos per channel); the first LOOP bars
   // are the "loop" channels, as on the real page.
   const SAMPLE = [34, 27, 22, 12, 10, 8, 7, 6, 5];
   const LOOP = 3;
   const YOUTUBE_COLS = 3;  // the picture's stand-in for YouTube's own grid
-  const MAX_COLS = 8;      // past this the cards are too thin to read as cards
+  // The grid preview starts from fewer than any BYTE setting (the minimum is
+  // 3), so it always ends on the user's own number and each press shows.
+  const FEWER_COLS = 2;
+  // A physical limit of a ~240px drawing: past this a card is under 5px wide.
+  const MAX_COLS = 40;
 
   // Preview loop: outline the part, then apply the change, then start over.
   const FLAG_AT = 450;
@@ -45,7 +50,7 @@
           node('div', 'wf-grid', times(3, card)),
           node('div', 'wf-shelf', times(6, () => node('i'))),
           node('div', 'wf-promo'),
-          node('div', 'wf-grid', times(13, card)),
+          node('div', 'wf-grid', times(MAX_COLS, card)), // a full row at any count
         ]),
       ]),
       node('div', 'wf-mini', [node('i')]),
@@ -70,11 +75,11 @@
     const now = view(state);
     const field = { shorts: 'shorts', promos: 'promos', thumbs: 'thumbs', channelBar: 'bar', miniplayer: 'mini' }[featureId];
     if (field) return [{ ...now, [field]: false }, { ...now, [field]: true }];
-    if (featureId === 'grid') {
-      return [{ ...now, cols: YOUTUBE_COLS }, { ...now, cols: Math.max(YOUTUBE_COLS + 1, state.gridColumns || 0) }];
-    }
+    if (featureId === 'grid') return [{ ...now, cols: FEWER_COLS }, now];
     return [now, now];
   }
+
+  const displayCols = n => Math.min(n, MAX_COLS);
 
   function create(el) {
     build(el);
@@ -93,7 +98,7 @@
       el.classList.toggle('no-thumbs', v.thumbs);
       el.classList.toggle('plain', !v.bar);
       el.classList.toggle('mini', v.mini);
-      el.style.setProperty('--cols', String(Math.min(v.cols, MAX_COLS)));
+      el.style.setProperty('--cols', String(displayCols(v.cols)));
     }
 
     function stop() {
@@ -129,5 +134,7 @@
     return { render, preview, stop };
   }
 
-  root.ByteWireframe = Object.freeze({ create });
+  const Wireframe = Object.freeze({ create, view, previewViews, displayCols });
+  if (typeof module === 'object' && module.exports) module.exports = Wireframe;
+  else root.ByteWireframe = Wireframe;
 })(globalThis);

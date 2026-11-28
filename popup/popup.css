@@ -389,7 +389,7 @@ body.paused #pause .icon-play { display: block; }
 .rows {
   transition: opacity 200ms var(--ease);
 }
-body.paused .rows { opacity: .4; }
+body.paused #rows { opacity: .4; }
 
 .row {
   display: flex;
